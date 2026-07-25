@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/wavelength-backend.js?path=$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

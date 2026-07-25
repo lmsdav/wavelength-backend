@@ -1,15 +1,30 @@
 import Anthropic from "@anthropic-ai/sdk";
 import express from "express";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json());
 
+// Enable CORS
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.sendStatus(200);
   next();
+});
+
+// Serve index.html on root
+app.get("/", (req, res) => {
+  const htmlPath = path.join(__dirname, "index.html");
+  if (fs.existsSync(htmlPath)) {
+    res.sendFile(htmlPath);
+  } else {
+    res.status(404).send("index.html not found");
+  }
 });
 
 const client = new Anthropic({

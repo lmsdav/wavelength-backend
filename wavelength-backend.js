@@ -112,7 +112,9 @@ Work out what type of thing it is, then follow the matching approach:
 - CLASSICAL COMPOSER: briefly characterise their style and era for someone who loves their famous works but hasn't explored widely, then recommend 3 things to explore next — a lesser-known work of theirs, a close contemporary, or a composer connected by lineage or influence.
 - NON-CLASSICAL ARTIST: briefly characterise what's distinctive about their sound in plain language, then recommend 3 classical works connected to it — direct sonic or emotional connections, or pieces the artist has cited, sampled or echoed.
 - NON-CLASSICAL SONG: describe its mood, energy and production style in plain, relatable language with no jargon, then recommend 3 classical pieces that bridge from it. Film, TV and game scores are excellent bridges here.
-- NOT MUSIC AT ALL, or unintelligible: still return the JSON shape. Set "title" to a short honest note such as "Not something we recognise", set "desc" to one friendly sentence inviting them to try a piece, composer or artist, and give 3 well-known accessible classical works as the recommendations.
+IMPORTANT — try hard before giving up. A short, oddly capitalised or half-remembered string is far more likely to be a song, album, artist or piece you partially recognise than genuine nonsense. Examples of things you SHOULD identify rather than reject: "echo beach" (Martha and the Muffins, 1980), "bury a friend", "moonlite sonata", "the lark ascending", "clair de lune". If you have a plausible identification, commit to it and say what you think it is. Only use the fallback below when the input has no plausible musical reading at all.
+
+- GENUINELY NOT MUSIC, or unintelligible (e.g. "asdfghjkl", "12345"): still return the JSON shape. Set "title" to a short honest note such as "Not something we recognise", set "desc" to one friendly sentence inviting them to try a piece, composer or artist, and give 3 well-known accessible classical works as the recommendations.
 
 Be warm and completely free of condescension. No "eat your vegetables" energy about classical music.
 
@@ -187,40 +189,31 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", model: CONFIG.model, uptimeSeconds: Math.round(process.uptime()) });
 });
 
-app.post("/api/recommend", rateLimit, async (req, res) => {
-  const raw = req.body ? req.body.input : undefined;
-
-  if (typeof raw !== "string") {
-    return res.status(400).json({ error: "Please type something to search for." });
-  }
-  const input = raw.trim().slice(0, CONFIG.maxInputChars);
-  if (!input) {
-    return res.status(400).json({ error: "Please type something to search for." });
-  }
-
+/* Shared by the API route and the self-test route. Returns
+   { ok, value, why, usage, attempts }. Never throws. */
+export async function getRecommendation(input, model = CONFIG.model) {
   let lastWhy = null;
+  let usage = null;
 
-  // One retry on a malformed response. RAID I-05.
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const started = Date.now();
       const response = await client.messages.create(
         {
-          model: CONFIG.model,
+          model,
           max_tokens: CONFIG.maxTokens,
           messages: [{ role: "user", content: PROMPT(input) }],
         },
         { timeout: CONFIG.requestTimeoutMs }
       );
 
-      const usage = response.usage || {};
+      const u = response.usage || {};
+      usage = { inputTokens: u.input_tokens, outputTokens: u.output_tokens, ms: Date.now() - started };
+
       console.log(JSON.stringify({
-        event: "recommend",
-        attempt,
-        ms: Date.now() - started,
+        event: "recommend", attempt, model, ms: usage.ms,
         stopReason: response.stop_reason,
-        inputTokens: usage.input_tokens,
-        outputTokens: usage.output_tokens,
+        inputTokens: u.input_tokens, outputTokens: u.output_tokens,
         inputChars: input.length,
       }));
 
@@ -233,26 +226,55 @@ app.post("/api/recommend", rateLimit, async (req, res) => {
       const check = validateShape(parsed);
       if (!check.ok) { lastWhy = check.why; continue; }
 
-      return res.json(check.value);
+      return { ok: true, value: check.value, usage, attempts: attempt };
     } catch (err) {
-      // Detail stays server-side. RAID I-15.
       console.error(JSON.stringify({
-        event: "recommend_error",
-        attempt,
-        name: err && err.name,
-        status: err && err.status,
-        message: err && err.message,
+        event: "recommend_error", attempt, model,
+        name: err && err.name, status: err && err.status, message: err && err.message,
       }));
-      lastWhy = "api error";
-      if (err && err.status === 401) break;   // bad key: retrying will not help
+      lastWhy = "api error: " + (err && err.status ? err.status : err && err.name);
+      if (err && err.status === 401) break;
     }
   }
+  return { ok: false, why: lastWhy, usage, attempts: 2 };
+}
 
-  console.error(JSON.stringify({ event: "recommend_failed", why: lastWhy }));
+app.post("/api/recommend", rateLimit, async (req, res) => {
+  const raw = req.body ? req.body.input : undefined;
+
+  if (typeof raw !== "string") {
+    return res.status(400).json({ error: "Please type something to search for." });
+  }
+  const input = raw.trim().slice(0, CONFIG.maxInputChars);
+  if (!input) {
+    return res.status(400).json({ error: "Please type something to search for." });
+  }
+
+  const result = await getRecommendation(input);
+  if (result.ok) return res.json(result.value);
+
+  console.error(JSON.stringify({ event: "recommend_failed", why: result.why }));
   return res.status(502).json({
     error: "We couldn't put a recommendation together just then. Please try again.",
   });
 });
+
+/* =============================================================================
+   SELF-TEST ROUTE — TEMPORARY. REMOVE BEFORE PRODUCTION (M5). RAID I-17.
+   -----------------------------------------------------------------------------
+   Only mounts if the SELFTEST_TOKEN environment variable is set, so it can be
+   switched off instantly by deleting that variable in Railway — no redeploy.
+
+   TO REMOVE COMPLETELY (three deletions):
+     1. delete the file  selftest.js
+     2. delete the two lines below marked  <<< REMOVE
+     3. delete the SELFTEST_TOKEN variable in Railway
+   ========================================================================== */
+if (process.env.SELFTEST_TOKEN) {                                    // <<< REMOVE
+  const { mountSelfTest } = await import("./selftest.js");           // <<< REMOVE
+  mountSelfTest(app, { getRecommendation, CONFIG });                 // <<< REMOVE
+  console.log(JSON.stringify({ event: "selftest_mounted", warning: "REMOVE BEFORE PRODUCTION" }));
+}                                                                    // <<< REMOVE
 
 // Static frontend, served last so it never shadows the API routes.
 app.use(express.static(path.join(__dirname, "public"), {

@@ -1,0 +1,16 @@
+{
+  "name": "wavelength-backend",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "main": "wavelength-backend.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node wavelength-backend.js",
+    "test:searches": "node test/run-searches.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "express": "^4.21.2"
+  }
+}

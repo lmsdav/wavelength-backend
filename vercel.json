@@ -1,7 +1,0 @@
-{
-  "buildCommand": "npm install",
-  "devCommand": "node wavelength-backend.js",
-  "env": {
-    "ANTHROPIC_API_KEY": "@ANTHROPIC_API_KEY"
-  }
-}

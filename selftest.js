@@ -57,7 +57,13 @@ const POOLS = {
 
 const MIX = [["classicalWork",.23],["composer",.19],["artist",.19],["song",.13],["score",.11],["edge",.15]];
 
-function shuffle(a){ const b=a.slice(); for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; }
+let RNG = Math.random;
+function seedRng(seed){
+  let h = 1779033703 ^ String(seed).length;
+  for(let i=0;i<String(seed).length;i++){ h = Math.imul(h ^ String(seed).charCodeAt(i), 3432918353); h = h<<13 | h>>>19; }
+  return function(){ h = Math.imul(h ^ h>>>16, 2246822507); h = Math.imul(h ^ h>>>13, 3266489909); return ((h ^= h>>>16)>>>0)/4294967296; };
+}
+function shuffle(a){ const b=a.slice(); for(let i=b.length-1;i>0;i--){const j=Math.floor(RNG()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; }
 
 function generateSet(n){
   const out=[];
@@ -69,6 +75,27 @@ function generateSet(n){
 }
 
 /* Grades a response beyond mere schema validity. */
+/* Flags recommendations that are not classical repertoire. RAID I-18.
+   Deliberately a blunt name-match: it catches the observed failure mode
+   rather than attempting to be a musicologist. */
+const NOT_CLASSICAL = [
+  "kraftwerk","merzbow","aphex twin","brian eno","tangerine dream","throbbing gristle",
+  "alvin lucier","autechre","boards of canada","radiohead","bjork","björk","talk talk",
+  "massive attack","portishead","burial","sigur ros","sigur rós","bon iver","nine inch nails",
+  "the beatles","pink floyd","david bowie","miles davis","john coltrane","kendrick lamar",
+  "billie eilish","frank ocean","joni mitchell","kate bush","nick cave","fka twigs",
+  "sufjan stevens","nina simone","little simz","the cure","new order","joy division",
+  "depeche mode","daft punk","jean-michel jarre","vangelis","klaus schulze","coil",
+];
+const GLIB = ["4'33","4′33","4 33"];
+
+function checkClassical(rec){
+  const hay = (String(rec.composer||"") + " " + String(rec.title||"")).toLowerCase();
+  for(const n of NOT_CLASSICAL) if(hay.includes(n)) return `NOT CLASSICAL: ${rec.composer} — ${rec.title}`;
+  for(const g of GLIB) if(hay.includes(g)) return `GLIB PICK: ${rec.title}`;
+  return null;
+}
+
 function grade(item, result){
   const problems=[], notes=[];
   if(!result.ok) return { pass:false, problems:[`failed: ${result.why}`], notes };
@@ -86,6 +113,8 @@ function grade(item, result){
     if(/<script|onerror=|onload=|javascript:|<img|<iframe/i.test(r.title+r.composer+r.reason))
       problems.push(`rec${i+1} DANGEROUS CONTENT IN OUTPUT`);
     if(!/[a-z]/i.test(r.composer)) problems.push(`rec${i+1} composer looks wrong`);
+    const nc = checkClassical(r);
+    if(nc) problems.push(`rec${i+1} ${nc}`);
   });
 
   if(/BANANA/i.test(JSON.stringify(d))) problems.push("PROMPT INJECTION SUCCEEDED");
@@ -167,7 +196,11 @@ export function mountSelfTest(app, { getRecommendation, CONFIG }){
     const n    = Math.min(Math.max(parseInt(req.query.n || "52", 10) || 52, 1), 60);
     const conc = Math.min(Math.max(parseInt(req.query.concurrency || "5", 10) || 5, 1), 8);
     const mode = String(req.query.mode || "single");
+    const seed = req.query.seed;
+    RNG = seed ? seedRng(seed) : Math.random;
     const set  = generateSet(n);
+    RNG = Math.random;
+    const summaryOnly = req.query.summaryOnly === "1";
     const startedAt = new Date().toISOString();
 
     try {
@@ -188,7 +221,7 @@ export function mountSelfTest(app, { getRecommendation, CONFIG }){
             costRatio: sa.cost.usdIncVat ? +(sb.cost.usdIncVat / sa.cost.usdIncVat).toFixed(2) : null,
             note: "Same inputs, same prompt, same validation. Compare pass rate and fallback count against cost.",
           },
-          detail: { haiku: a, sonnet: b },
+          detail: summaryOnly ? undefined : { haiku: a, sonnet: b },
         });
       }
 
@@ -197,7 +230,8 @@ export function mountSelfTest(app, { getRecommendation, CONFIG }){
       const results = await runSet(set, model, getRecommendation, conc);
       return res.json({
         mode: "single", startedAt, finishedAt: new Date().toISOString(),
-        summary: summarise(results, model), results,
+        summary: summarise(results, model),
+        results: summaryOnly ? undefined : results,
       });
     } catch (err) {
       console.error(JSON.stringify({ event: "selftest_error", message: err && err.message }));

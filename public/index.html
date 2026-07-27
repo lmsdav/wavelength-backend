@@ -35,17 +35,17 @@
                            44px minimum touch target for WCAG at M5. */
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{-webkit-text-size-adjust:100%;overflow-x:hidden;width:100%}
+  /* Do NOT add overflow-x here. On iOS Safari, overflow on the root element
+     expands the layout viewport to the content width rather than clipping it,
+     and the whole page renders at desktop width shrunk down. Keep it on body. */
+  html{-webkit-text-size-adjust:100%}
   body{
     font-family:"Spectral",Georgia,serif;
     background:var(--paper);
     color:var(--ink);
     line-height:1.55;
     -webkit-font-smoothing:antialiased;
-    min-height:100%;
     overflow-x:hidden;
-    width:100%;
-    max-width:100%;
   }
   .wrap{max-width:1080px;width:100%;margin:0 auto;padding:0 20px}
   /* Guards. Long work titles, wide grids and images can each push the page
@@ -330,9 +330,12 @@
   @media(min-width:640px){.overlay{align-items:center;padding:20px}}
   .overlay.open{display:flex}
   .modal{
-    background:var(--card);width:100%;max-width:440px;border-radius:20px 20px 0 0;
-    padding:24px 22px 26px;box-shadow:var(--shadow);max-height:92vh;overflow-y:auto;
+    background:var(--card);width:100%;max-width:min(440px,100%);
+    border-radius:20px 20px 0 0;padding:24px 22px 26px;box-shadow:var(--shadow);
+    max-height:92dvh;overflow-y:auto;overflow-x:hidden;
+    padding-bottom:calc(26px + env(safe-area-inset-bottom));
   }
+  .modal *{max-width:100%;min-width:0}
   @media(min-width:640px){.modal{border-radius:20px}}
   .modal h3{font-family:"Fraunces",Georgia,serif;font-weight:500;font-size:1.4rem;margin-bottom:4px}
   .modal .sub{color:var(--muted);font-size:.92rem;margin-bottom:18px}
@@ -342,31 +345,46 @@
     letter-spacing:.04em;color:var(--ink);margin-bottom:6px;
   }
   .field input, .field textarea{
-    width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;
-    font-family:"Space Grotesk",sans-serif;font-size:14px;color:var(--ink);background:var(--paper);
+    width:100%;max-width:100%;box-sizing:border-box;border:1px solid var(--line);
+    border-radius:10px;padding:11px 12px;font-family:"Space Grotesk",sans-serif;
+    font-size:16px;   /* 16px stops iOS zooming the page when the field is focused */
+    color:var(--ink);background:var(--paper);
   }
+  .field textarea{resize:vertical}
   .field input:focus,.field textarea:focus{outline:none;border-color:var(--anchor)}
   .field .hint{font-family:"Space Grotesk",sans-serif;font-size:11px;color:var(--muted);margin-top:5px}
-  .yn{display:flex;gap:8px}
+  .yn{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .yn button{
-    flex:1;font-family:"Space Grotesk",sans-serif;font-size:14px;padding:9px;
+    width:100%;min-width:0;font-family:"Space Grotesk",sans-serif;font-size:14px;padding:10px 6px;
     border:1px solid var(--line);background:var(--paper);border-radius:10px;cursor:pointer;color:var(--ink);
   }
   .yn button.sel{border-color:var(--anchor);background:rgba(67,56,202,.08);color:var(--anchor)}
   /* Which of the three worked best — tells us whether the three-step idea
      is landing, or whether people only ever want the safe one. */
-  .pick{display:flex;gap:6px;flex-wrap:wrap}
+  /* Two by two on a phone — four across does not fit, and forcing it made the
+     whole panel wider than the screen. Four across only above 420px. */
+  .pick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  @media(min-width:420px){ .pick{grid-template-columns:repeat(4,minmax(0,1fr))} }
   .pick button{
-    flex:1 1 0;min-width:78px;font-family:"Space Grotesk",sans-serif;font-size:13px;padding:9px 6px;
-    border:1px solid var(--line);background:var(--paper);border-radius:10px;cursor:pointer;color:var(--ink);
+    width:100%;min-width:0;font-family:"Space Grotesk",sans-serif;font-size:13px;
+    padding:10px 4px;border:1px solid var(--line);background:var(--paper);
+    border-radius:10px;cursor:pointer;color:var(--ink);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
   .pick button[data-v="near"].sel{border-color:var(--near);background:rgba(15,156,142,.10);color:var(--near)}
   .pick button[data-v="stretch"].sel{border-color:var(--stretch);background:rgba(201,134,10,.10);color:var(--stretch)}
   .pick button[data-v="reach"].sel{border-color:var(--reach);background:rgba(225,67,107,.10);color:var(--reach)}
   .pick button[data-v="none"].sel{border-color:var(--muted);background:rgba(91,96,112,.10);color:var(--muted)}
-  .modal .actions{display:flex;gap:10px;margin-top:6px}
-  .modal .send{flex:1;background:var(--ink);color:#fff;border:0;border-radius:11px;padding:12px;font-family:"Space Grotesk",sans-serif;font-size:15px;font-weight:500;cursor:pointer}
-  .modal .cancel{background:transparent;border:1px solid var(--line);border-radius:11px;padding:12px 16px;font-family:"Space Grotesk",sans-serif;font-size:15px;cursor:pointer;color:var(--muted)}
+  .modal .actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .modal .send{
+    flex:1 1 60%;min-width:0;background:var(--ink);color:#fff;border:0;border-radius:11px;
+    padding:13px 12px;font-family:"Space Grotesk",sans-serif;font-size:15px;font-weight:500;cursor:pointer;
+  }
+  .modal .send:disabled{opacity:.6;cursor:not-allowed}
+  .modal .cancel{
+    flex:0 1 auto;min-width:0;background:transparent;border:1px solid var(--line);border-radius:11px;
+    padding:13px 16px;font-family:"Space Grotesk",sans-serif;font-size:15px;cursor:pointer;color:var(--muted);
+  }
   .thanks{text-align:center;padding:14px 0}
   .thanks .big{font-family:"Fraunces",Georgia,serif;font-size:1.4rem;margin-bottom:6px}
   .thanks p{color:var(--muted);font-size:.95rem}

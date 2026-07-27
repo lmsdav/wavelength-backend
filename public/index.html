@@ -169,9 +169,15 @@
      Once there are results: the column narrows, everything shifts left
      together, and the rail appears alongside. Hero and results always share
      one column, so they stay aligned with each other. */
-  .page{display:grid;grid-template-columns:1fr;gap:26px;align-items:start}
+  .page{display:grid;grid-template-columns:1fr;column-gap:26px;row-gap:0;align-items:start}
   @media(min-width:900px){
     .page.with-results{grid-template-columns:minmax(0,1fr) 260px}
+    /* Hero sits in row 1, results in row 2, rail alongside ROW 2 — so the
+       sponsor cards start level with the "Your starting point" card rather
+       than level with the title. */
+    .page.with-results .hero          {grid-column:1;grid-row:1}
+    .page.with-results .results-region{grid-column:1;grid-row:2}
+    .page.with-results aside.rail     {grid-column:2;grid-row:2}
   }
   .results-region{padding:8px 0 40px;display:none}
   /* Clear space beneath everything so the floating Feedback button never
@@ -386,7 +392,6 @@
     </header>
 
     <main class="page">
-    <div class="col">
     <section class="hero">
       <div class="eyebrow">Find your next piece</div>
       <h1>What do you already love?</h1>
@@ -427,7 +432,6 @@
         Three steps out, every time: a <b class="n">comfortable next step</b>, a <b class="s">stretch</b>, and a <b class="r">reach</b> — each with the musical bridge explained.
       </div>
     </section>
-    </div>
 
     <!-- Sponsor rail. Unpaid links — see the label-slot comment in the CSS above. -->
     <aside class="rail" aria-label="Where to hear more">
@@ -736,7 +740,10 @@
     lastFocus = document.activeElement;
     overlay.classList.add('open');
     document.getElementById('formBody').style.display = 'block';
-    document.getElementById('thanks').style.display = 'none';
+    var t = document.getElementById('thanks');
+    t.style.display = 'none';
+    t.querySelector('.big').textContent = 'Thank you.';
+    t.querySelector('p').textContent = "That's exactly the kind of note that makes this better.";
     Array.prototype.forEach.call(document.querySelectorAll('#yn button, #pick button'), function(b){ b.classList.remove('sel'); });
     document.getElementById('fbQuery').focus();
   }
@@ -760,9 +767,48 @@
     });
   });
 
-  document.getElementById('send').addEventListener('click', function(){
-    document.getElementById('formBody').style.display = 'none';
-    document.getElementById('thanks').style.display = 'block';
+  var sendBtn = document.getElementById('send');
+  sendBtn.addEventListener('click', function(){
+    var sel = function(group){
+      var b = document.querySelector(group + ' button.sel');
+      return b ? b.dataset.v : '';
+    };
+    var payload = {
+      query:    document.getElementById('fbQuery').value.slice(0, 200),
+      helpful:  sel('#yn'),
+      best:     sel('#pick'),
+      note:     document.getElementById('fbNote').value.slice(0, 1000),
+      email:    document.getElementById('fbEmail').value.slice(0, 120),
+      device:   navigator.userAgent.slice(0, 300)
+    };
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending…';
+
+    fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(function(res){ return res.ok ? res.json() : Promise.reject(new Error('failed')); })
+    .then(function(){
+      document.getElementById('formBody').style.display = 'none';
+      document.getElementById('thanks').style.display = 'block';
+      document.getElementById('fbNote').value = '';
+      document.getElementById('fbEmail').value = '';
+    })
+    .catch(function(){
+      // Never claim it was received when it was not. RAID I-20.
+      var t = document.getElementById('thanks');
+      t.querySelector('.big').textContent = 'That did not send';
+      t.querySelector('p').textContent = 'Something went wrong at our end and your note was not saved. Sorry — please try again in a moment.';
+      document.getElementById('formBody').style.display = 'none';
+      t.style.display = 'block';
+    })
+    .finally(function(){
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Send feedback';
+    });
   });
 })();
 </script>

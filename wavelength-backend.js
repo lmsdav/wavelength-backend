@@ -114,7 +114,9 @@ Work out what type of thing it is, then follow the matching approach:
 - NON-CLASSICAL SONG: describe its mood, energy and production style in plain, relatable language with no jargon, then recommend 3 classical pieces that bridge from it. Film, TV and game scores are excellent bridges here.
 IMPORTANT — try hard before giving up. A short, oddly capitalised or half-remembered string is far more likely to be a song, album, artist or piece you partially recognise than genuine nonsense. Examples of things you SHOULD identify rather than reject: "echo beach" (Martha and the Muffins, 1980), "bury a friend", "moonlite sonata", "the lark ascending", "clair de lune". If you have a plausible identification, commit to it and say what you think it is. Only use the fallback below when the input has no plausible musical reading at all.
 
-- GENUINELY NOT MUSIC, or unintelligible (e.g. "asdfghjkl", "12345"). NOTE: a real band, artist or song is NEVER this case, however far from classical it is: still return the JSON shape. Set "title" to a short honest note such as "Not something we recognise", set "desc" to one friendly sentence inviting them to try a piece, composer or artist, and give 3 well-known accessible classical works as the recommendations.
+- GENUINELY NOT MUSIC, or unintelligible: use the fallback described below. This should be RARE. It applies ONLY to keyboard mashing ("asdfghjkl"), bare numbers ("12345"), single letters, or text with no conceivable musical reading at all.
+
+  Before ever using the fallback, ask: could this plausibly be the title of a song, album, band, composer or piece? Ordinary words very often are. "Hello" is Adele and Lionel Richie. "Yesterday" is the Beatles. "Creep" is Radiohead. "Police" is a band. "Sting" is an artist. "Requiem", "Symphony", "Toxic", "Umbrella", "Halo", "Africa", "清" — all have musical readings. If ANY plausible reading exists, take it and answer properly. A greeting typed into a music search box is far more likely to be a song title than a greeting.: still return the JSON shape. Set "title" to a short honest note such as "Not something we recognise", set "desc" to one friendly sentence inviting them to try a piece, composer or artist, and give 3 well-known accessible classical works as the recommendations.
 
 CRITICAL CONSTRAINT — APPLIES TO YOUR THREE RECOMMENDATIONS ONLY, NEVER TO THE INPUT
 
@@ -144,10 +146,19 @@ Describe the identified starting point in exactly ONE short plain-language sente
 - step 2 ("A stretch"): a genuine new direction, still clearly connected
 - step 3 ("A reach"): further removed, with a real, explainable bridge back
 
+IF AND ONLY IF you are using the fallback, respond with this shape instead — note "recognised": false and an EMPTY recs array. Do not invent recommendations for something you could not identify:
+{
+  "recognised": false,
+  "title": "Not something we recognise",
+  "desc": "One short, friendly sentence inviting them to try a piece, composer, artist or song.",
+  "recs": []
+}
+
 Each reason must name ONE specific musical connection — form, era, technique, emotional register, instrumentation, or direct influence — in ONE sentence of at most 25 words. Never vague "if you like this you'll like that". Brevity matters more than completeness.
 
 Respond with ONLY valid JSON. No markdown fences, no preamble, exactly this shape:
 {
+  "recognised": true,
   "title": "Composer — Work title (or artist/composer name where there's no single work)",
   "desc": "One short sentence.",
   "recs": [
@@ -173,7 +184,17 @@ function validateShape(obj) {
   if (!obj || typeof obj !== "object") return { ok: false, why: "not an object" };
   if (typeof obj.title !== "string" || !obj.title.trim()) return { ok: false, why: "missing title" };
   if (typeof obj.desc !== "string" || !obj.desc.trim()) return { ok: false, why: "missing desc" };
-  if (!Array.isArray(obj.recs) || obj.recs.length !== 3) return { ok: false, why: "recs is not an array of 3" };
+  const recognised = obj.recognised !== false;   // default true if the model omits it
+
+  if (!Array.isArray(obj.recs)) return { ok: false, why: "recs is not an array" };
+
+  // Not recognised: no recommendations, by design. An unidentified input has no
+  // "next step" to offer, so presenting three would be incoherent.
+  if (!recognised) {
+    return { ok: true, value: { recognised: false, title: obj.title.trim(), desc: obj.desc.trim(), recs: [] } };
+  }
+
+  if (obj.recs.length !== 3) return { ok: false, why: "recs is not an array of 3" };
 
   const steps = new Set();
   for (const r of obj.recs) {
@@ -191,6 +212,7 @@ function validateShape(obj) {
   return {
     ok: true,
     value: {
+      recognised: true,
       title: obj.title.trim(),
       desc: obj.desc.trim(),
       recs: obj.recs

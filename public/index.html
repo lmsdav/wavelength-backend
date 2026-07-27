@@ -165,8 +165,26 @@
   .anchor .a-title{font-family:"Fraunces",Georgia,serif;font-size:1.35rem;font-weight:500;margin-bottom:4px}
   .anchor .a-desc{color:var(--muted);font-size:.98rem}
 
+  /* Unrecognised input: no recommendations, no spine, no step labels.
+     An input we could not identify has no "next step" to offer, so showing
+     three would be incoherent. We say so plainly and point at the examples. */
+  .anchor.unknown{border-left-color:var(--muted)}
+  .anchor.unknown .tag{color:var(--muted)}
+  .nudge{
+    background:var(--card);border:1px dashed var(--line);border-radius:14px;
+    padding:18px 20px;margin-top:12px;text-align:center;color:var(--muted);font-size:.98rem;
+  }
+  .nudge button{
+    font-family:"Space Grotesk",sans-serif;font-size:13px;color:var(--anchor);
+    background:rgba(67,56,202,.06);border:1px solid rgba(67,56,202,.16);
+    border-radius:999px;padding:7px 14px;cursor:pointer;margin:8px 4px 0;
+  }
+  .nudge button:hover{background:rgba(67,56,202,.12)}
+
   /* the spine of three steps */
   .spine{position:relative;margin-top:8px;padding-left:26px}
+  .spine.hidden::before{display:none}
+  .spine.hidden{padding-left:0}
   .spine::before{
     content:"";position:absolute;left:7px;top:14px;bottom:14px;width:2px;
     background:var(--spectrum);border-radius:2px;
@@ -532,11 +550,33 @@
   }
 
   function render(data){
+    var recognised = data.recognised !== false;
+    var anchor = document.querySelector('.anchor');
+
+    anchor.classList.toggle('unknown', !recognised);
+    anchor.querySelector('.tag').textContent = recognised ? 'Your starting point' : 'Nothing to trace from';
     document.getElementById('aTitle').textContent = data.title || '';
     document.getElementById('aDesc').textContent  = data.desc  || '';
+
     spine.textContent = '';
-    (data.recs || []).forEach(function(r){ spine.appendChild(buildStep(r)); });
-    document.getElementById('fbQuery').value = data.title || '';
+    spine.classList.toggle('hidden', !recognised);
+
+    if (recognised) {
+      (data.recs || []).forEach(function(r){ spine.appendChild(buildStep(r)); });
+    } else {
+      // No recommendations. Offer a way forward instead of a dead end.
+      var nudge = el('div', 'nudge');
+      nudge.appendChild(el('div', null, 'Try one of these to see how it works:'));
+      EXAMPLES.slice().sort(function(){ return Math.random() - 0.5; }).slice(0,3).forEach(function(c){
+        var b = el('button', null, c);
+        b.type = 'button';
+        b.addEventListener('click', function(){ q.value = c; syncClear(); search(); });
+        nudge.appendChild(b);
+      });
+      spine.appendChild(nudge);
+    }
+
+    document.getElementById('fbQuery').value = recognised ? (data.title || '') : q.value;
     region.classList.add('show');
   }
 
@@ -574,7 +614,10 @@
       });
     })
     .then(function(data){
-      if (!data || !Array.isArray(data.recs) || data.recs.length === 0) {
+      if (!data || !Array.isArray(data.recs)) {
+        throw new Error("We couldn't make sense of that one. Try a different piece, composer or artist.");
+      }
+      if (data.recognised !== false && data.recs.length === 0) {
         throw new Error("We couldn't make sense of that one. Try a different piece, composer or artist.");
       }
       render(data);

@@ -35,14 +35,14 @@
                            44px minimum touch target for WCAG at M5. */
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{-webkit-text-size-adjust:100%}
+  html{-webkit-text-size-adjust:100%;overflow-x:clip}
   body{
     font-family:"Spectral",Georgia,serif;
     background:var(--paper);
     color:var(--ink);
     line-height:1.55;
     -webkit-font-smoothing:antialiased;
-    overflow-x:hidden;
+    min-height:100%;
   }
   .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
 
@@ -160,11 +160,24 @@
   }
   .error.show{display:block}
 
-  /* ---- results layout ---- */
+  /* ---- page layout ----
+     One grid holds everything, so the hero and the results share a single
+     column and line up. Previously the hero was centred on the full page while
+     the results were centred on a narrower column squeezed by the rail, and the
+     two did not agree. The rail now sits alongside both. */
+  /* Before a search: one centred column, no rail — a clean opening page.
+     Once there are results: the column narrows, everything shifts left
+     together, and the rail appears alongside. Hero and results always share
+     one column, so they stay aligned with each other. */
+  .page{display:grid;grid-template-columns:1fr;gap:26px;align-items:start}
+  @media(min-width:900px){
+    .page.with-results{grid-template-columns:minmax(0,1fr) 260px}
+  }
   .results-region{padding:8px 0 40px;display:none}
+  /* Clear space beneath everything so the floating Feedback button never
+     covers the final card when scrolled to the bottom. */
+  .page{padding-bottom:88px}
   .results-region.show{display:block}
-  .layout{display:grid;grid-template-columns:1fr;gap:26px;margin-top:26px}
-  @media(min-width:900px){.layout{grid-template-columns:1fr 260px;align-items:start}}
 
   .anchor{
     background:var(--card);border:1px solid var(--line);border-left:4px solid var(--anchor);
@@ -250,7 +263,9 @@
   }
 
   /* ---- sponsor rail ---- */
-  aside.rail{align-self:start}
+  aside.rail{align-self:start;display:none}
+  .page.with-results aside.rail{display:block}
+  @media(min-width:900px){ aside.rail{position:sticky;top:24px} }
   .sponsor{
     background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:16px 18px;box-shadow:var(--shadow);
@@ -283,7 +298,10 @@
 
   /* ---- feedback button + modal ---- */
   .fab{
-    position:fixed;right:18px;bottom:18px;z-index:40;
+    position:fixed;z-index:40;
+    right:max(18px, env(safe-area-inset-right));
+    bottom:max(18px, env(safe-area-inset-bottom));
+    max-width:calc(100vw - 36px);
     font-family:"Space Grotesk",sans-serif;font-size:14px;font-weight:500;
     background:var(--ink);color:#fff;border:0;border-radius:999px;
     padding:12px 18px;cursor:pointer;box-shadow:0 8px 24px rgba(20,22,28,.22);
@@ -367,7 +385,8 @@
       </div>
     </header>
 
-    <main>
+    <main class="page">
+    <div class="col">
     <section class="hero">
       <div class="eyebrow">Find your next piece</div>
       <h1>What do you already love?</h1>
@@ -397,18 +416,21 @@
     </section>
 
     <section class="results-region" id="resultsRegion">
-      <div class="layout">
-        <div>
           <div class="anchor">
             <div class="tag">Your starting point</div>
             <h2 class="a-title" id="aTitle"></h2>
             <div class="a-desc" id="aDesc"></div>
           </div>
           <div class="spine" id="spine"></div>
-        </div>
 
-        <!-- Sponsor rail. Unpaid links — see the label-slot comment in the CSS above. -->
-        <aside class="rail" aria-label="Where to hear more">
+      <div class="footnote">
+        Three steps out, every time: a <b class="n">comfortable next step</b>, a <b class="s">stretch</b>, and a <b class="r">reach</b> — each with the musical bridge explained.
+      </div>
+    </section>
+    </div>
+
+    <!-- Sponsor rail. Unpaid links — see the label-slot comment in the CSS above. -->
+    <aside class="rail" aria-label="Where to hear more">
           <div class="sponsor">
             <h4>Hyperion Records</h4>
             <p>New recordings, curated for listeners exploring the repertoire.</p>
@@ -419,13 +441,7 @@
             <p>Chamber music and song recitals in central London.</p>
             <a href="https://www.wigmore-hall.org.uk/" target="_blank" rel="noopener noreferrer">See what's on &rarr;</a>
           </div>
-        </aside>
-      </div>
-
-      <div class="footnote">
-        Three steps out, every time: a <b class="n">comfortable next step</b>, a <b class="s">stretch</b>, and a <b class="r">reach</b> — each with the musical bridge explained.
-      </div>
-    </section>
+    </aside>
     </main>
   </div>
 
@@ -512,6 +528,7 @@
   var statusEl = document.getElementById('status');
   var errorEl = document.getElementById('error');
   var region = document.getElementById('resultsRegion');
+  var page   = document.querySelector('.page');
   var spine = document.getElementById('spine');
   var chipWrap = document.getElementById('chips');
 
@@ -624,6 +641,7 @@
 
     document.getElementById('fbQuery').value = recognised ? (data.title || '') : q.value;
     region.classList.add('show');
+    page.classList.add('with-results');
   }
 
   function setBusy(on){
@@ -643,7 +661,6 @@
 
     setBusy(true);
     errorEl.classList.remove('show');
-    region.classList.remove('show');
 
     fetch('/api/recommend', {
       method: 'POST',
@@ -703,6 +720,7 @@
     syncClear();
     errorEl.classList.remove('show');
     region.classList.remove('show');
+    page.classList.remove('with-results');
     q.focus();
   });
   syncClear();

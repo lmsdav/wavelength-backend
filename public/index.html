@@ -115,7 +115,12 @@
   .search input{padding-right:34px}
   @media(max-width:560px){.search .field{width:100%}}
 
-  .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:18px auto 0;max-width:560px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:18px auto 0;max-width:600px}
+  .chips-label{
+    font-family:"Space Grotesk",sans-serif;font-size:12px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--muted);margin-right:2px;
+  }
+  @media(max-width:560px){.chips-label{flex-basis:100%;text-align:center;margin:0 0 2px}}
   .chip{
     font-family:"Space Grotesk",sans-serif;font-size:13px;color:var(--anchor);
     background:rgba(67,56,202,.06);border:1px solid rgba(67,56,202,.16);
@@ -467,8 +472,17 @@
      ================================================================= */
 
   var MAX_INPUT = 200;
-  var EXAMPLES = ["Radiohead","Elgar Cello Concerto","Beethoven Moonlight Sonata",
-                  "Billie Eilish","Hans Zimmer","Tchaikovsky","Kendrick Lamar","Holst The Planets"];
+  /* FIXED, not shuffled, and one of each kind — deliberately mirroring the
+     subtitle: a piece, a composer, an artist, a film score.
+     Previously these were four picked at random from a list that was half
+     classical, so some page loads showed four classical names and implied the
+     app only accepts classical input. That is the opposite of the point. */
+  var EXAMPLES = [
+    { term: "Elgar Cello Concerto", kind: "a piece" },
+    { term: "Tchaikovsky",          kind: "a composer" },
+    { term: "Radiohead",            kind: "an artist" },
+    { term: "Hans Zimmer",          kind: "a film score" }
+  ];
 
   var q = document.getElementById('q');
   var go = document.getElementById('go');
@@ -567,10 +581,10 @@
       // No recommendations. Offer a way forward instead of a dead end.
       var nudge = el('div', 'nudge');
       nudge.appendChild(el('div', null, 'Try one of these to see how it works:'));
-      EXAMPLES.slice().sort(function(){ return Math.random() - 0.5; }).slice(0,3).forEach(function(c){
-        var b = el('button', null, c);
+      EXAMPLES.slice(0,3).forEach(function(ex){
+        var b = el('button', null, ex.term);
         b.type = 'button';
-        b.addEventListener('click', function(){ q.value = c; syncClear(); search(); });
+        b.addEventListener('click', function(){ q.value = ex.term; syncClear(); search(); });
         nudge.appendChild(b);
       });
       spine.appendChild(nudge);
@@ -629,11 +643,14 @@
     .finally(function(){ setBusy(false); });
   }
 
-  /* chips — pick four at random each load */
-  EXAMPLES.slice().sort(function(){ return Math.random() - 0.5; }).slice(0,4).forEach(function(c){
-    var b = el('button', 'chip', c);
+  /* chips — fixed order, labelled so they read as examples, not filters */
+  chipWrap.appendChild(el('span', 'chips-label', 'Try one:'));
+  EXAMPLES.forEach(function(ex){
+    var b = el('button', 'chip', ex.term);
     b.type = 'button';
-    b.addEventListener('click', function(){ q.value = c; syncClear(); search(); });
+    b.setAttribute('aria-label', ex.term + ' — ' + ex.kind);
+    b.title = ex.kind;
+    b.addEventListener('click', function(){ q.value = ex.term; syncClear(); search(); });
     chipWrap.appendChild(b);
   });
 

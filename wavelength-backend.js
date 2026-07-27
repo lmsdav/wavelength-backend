@@ -146,6 +146,12 @@ Describe the identified starting point in exactly ONE short plain-language sente
 - step 2 ("A stretch"): a genuine new direction, still clearly connected
 - step 3 ("A reach"): further removed, with a real, explainable bridge back
 
+THE TEST IS CONFIDENCE, NOT NONSENSE. Set "recognised": false whenever you cannot confidently say what the user meant — not only when the input is gibberish. Ambiguity is a reason to use the fallback, not a reason to guess and continue.
+
+A reliable self-check: if your "title" or "desc" would contain any of these — "ambiguous", "unclear", "uncertain", "possibly", "probably", "most likely", "perhaps", "might be", "may be", "partial", "too short", "did you mean", "if you meant", "assuming", "I think", or a question mark — then you have NOT identified it. Set "recognised": false, return an empty recs array, and say plainly that you need a bit more to go on.
+
+Never produce a hedged identification followed by three recommendations. Either you know what they meant and you recommend confidently, or you do not and you recommend nothing. There is no middle option.
+
 IF AND ONLY IF you are using the fallback, respond with this shape instead — note "recognised": false and an EMPTY recs array. Do not invent recommendations for something you could not identify:
 {
   "recognised": false,
@@ -178,13 +184,40 @@ function extractJson(text) {
   catch { return null; }
 }
 
+/* Hedge detection. Three separate prompt revisions failed to stop the model
+   producing a hedged identification followed by three confident recommendations.
+   This enforces it in code instead: if the model is visibly unsure, we treat the
+   input as unrecognised and show no recommendations. RAID I-29.
+   False positives are acceptable — the failure mode is an honest "we need a bit
+   more to go on", which is exactly what a hedged answer should have said. */
+const HEDGE_TITLE = /\b(ambiguous|unclear|uncertain|unsure|not sure|possibly|probably|most likely|perhaps|might be|may be|partial|unknown|unidentified|assuming|i think|unrecognis|unrecogniz)\b|\?/i;
+const HEDGE_DESC  = /\b(too short to|too vague|did you mean|if you meant|cannot identify|can't identify|could not identify|couldn't identify|not enough to go on|hard to say|difficult to identify)\b/i;
+
+function looksHedged(title, desc) {
+  return HEDGE_TITLE.test(title) || HEDGE_DESC.test(desc);
+}
+
 /* Returns { ok: true, value } or { ok: false, why }. Rejects anything the
    frontend could not render sensibly. RAID I-05. */
 function validateShape(obj) {
   if (!obj || typeof obj !== "object") return { ok: false, why: "not an object" };
   if (typeof obj.title !== "string" || !obj.title.trim()) return { ok: false, why: "missing title" };
   if (typeof obj.desc !== "string" || !obj.desc.trim()) return { ok: false, why: "missing desc" };
-  const recognised = obj.recognised !== false;   // default true if the model omits it
+  let recognised = obj.recognised !== false;   // default true if the model omits it
+
+  // Override the model if it says it identified something but plainly did not.
+  if (recognised && looksHedged(obj.title, obj.desc)) {
+    console.log(JSON.stringify({ event: "hedge_override", title: obj.title }));
+    return {
+      ok: true,
+      value: {
+        recognised: false,
+        title: "We need a bit more to go on",
+        desc: "Try a fuller name — a composer, a piece, a band or a song title.",
+        recs: [],
+      },
+    };
+  }
 
   if (!Array.isArray(obj.recs)) return { ok: false, why: "recs is not an array" };
 

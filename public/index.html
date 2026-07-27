@@ -31,6 +31,8 @@
     --reach:#E1436B;    /* rose — reach */
     --spectrum:linear-gradient(90deg,#4338CA,#0F9C8E,#C9860A,#E1436B);
     --shadow:0 1px 2px rgba(20,22,28,.04),0 12px 32px rgba(20,22,28,.06);
+    --control-h:48px;   /* field and button share this. 48px also clears the
+                           44px minimum touch target for WCAG at M5. */
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
@@ -73,23 +75,27 @@
 
   /* ---- search ---- */
   .search{
-    display:flex;gap:10px;max-width:560px;margin:0 auto;
+    display:flex;align-items:stretch;gap:10px;max-width:560px;margin:0 auto;
     background:var(--card);border:1px solid var(--line);border-radius:16px;
     padding:8px;box-shadow:var(--shadow);
     transition:border-color .2s,box-shadow .2s;
   }
   .search:focus-within{border-color:var(--anchor);box-shadow:0 0 0 4px rgba(67,56,202,.10),var(--shadow)}
   .search input{
-    flex:1;border:0;background:transparent;font-family:"Space Grotesk",sans-serif;
-    font-size:16px;color:var(--ink);padding:12px 14px;min-width:0;
+    flex:1;width:100%;min-width:0;border:0;background:transparent;
+    font-family:"Space Grotesk",sans-serif;font-size:16px;color:var(--ink);
+    height:var(--control-h);line-height:var(--control-h);padding:0 14px;
+    -webkit-appearance:none;appearance:none;border-radius:11px;
   }
   .search input::placeholder{color:#8b90a0}
   .search input:focus{outline:none}
   .search button{
     font-family:"Space Grotesk",sans-serif;font-size:15px;font-weight:500;
     color:#fff;background:var(--ink);border:0;border-radius:11px;
-    padding:12px 22px;cursor:pointer;transition:transform .12s,background .2s;
-    flex:none;
+    height:var(--control-h);line-height:1;padding:0 22px;
+    display:inline-flex;align-items:center;justify-content:center;
+    cursor:pointer;transition:transform .12s,background .2s;flex:none;
+    -webkit-appearance:none;appearance:none;
   }
   .search button:hover:not(:disabled){background:#2a2d38}
   .search button:active:not(:disabled){transform:scale(.97)}
@@ -99,11 +105,12 @@
      truncated. Fixes the issue seen on iPhone, iPad and narrow desktop windows. */
   @media(max-width:560px){
     .search{flex-direction:column;gap:8px}
-    .search input{width:100%;text-align:center}
+    .search .field{width:100%}
+    .search input{width:100%;text-align:center;padding:0 36px}
     .search button{width:100%}
   }
   /* clear button inside the field */
-  .search .field{position:relative;flex:1;display:flex;min-width:0}
+  .search .field{position:relative;flex:1;display:flex;align-items:stretch;min-width:0;height:var(--control-h)}
   .search .clear{
     position:absolute;right:6px;top:50%;transform:translateY(-50%);
     width:26px;height:26px;border:0;background:transparent;color:#9aa0af;
@@ -112,7 +119,7 @@
   }
   .search .clear:hover{background:rgba(20,22,28,.06);color:var(--ink)}
   .search .clear.show{display:flex}
-  .search input{padding-right:34px}
+  .search input{padding-right:36px}
   @media(max-width:560px){.search .field{width:100%}}
 
   .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:18px auto 0;max-width:600px}
@@ -606,7 +613,7 @@
       // No recommendations. Offer a way forward instead of a dead end.
       var nudge = el('div', 'nudge');
       nudge.appendChild(el('div', null, 'Try one of these to see how it works:'));
-      EXAMPLES.slice(0,3).forEach(function(ex){
+      EXAMPLES.forEach(function(ex){
         var b = el('button', null, ex.term);
         b.type = 'button';
         b.addEventListener('click', function(){ q.value = ex.term; syncClear(); search(); });

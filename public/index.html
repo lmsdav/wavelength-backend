@@ -226,6 +226,22 @@
 
   .near{--dot:var(--near)} .stretch{--dot:var(--stretch)} .reach{--dot:var(--reach)}
 
+  /* Results vary between identical searches because there is no single correct
+     bridge — dozens are defensible. Rather than apologise for that, we make it
+     something the user can do on purpose. */
+  .again{margin:18px 0 0;text-align:center}
+  .again button{
+    font-family:"Space Grotesk",sans-serif;font-size:14px;font-weight:500;
+    color:var(--anchor);background:var(--card);border:1px solid rgba(67,56,202,.25);
+    border-radius:999px;padding:11px 20px;cursor:pointer;transition:background .18s;
+  }
+  .again button:hover:not(:disabled){background:rgba(67,56,202,.06)}
+  .again button:disabled{opacity:.5;cursor:not-allowed}
+  .again .why{
+    font-size:.88rem;color:var(--muted);margin-top:9px;max-width:44ch;
+    margin-inline:auto;line-height:1.5;
+  }
+
   /* ---- sponsor rail ---- */
   aside.rail{align-self:start}
   .sponsor{
@@ -401,6 +417,7 @@
 
       <div class="footnote">
         Three steps out, every time: a <b class="n">comfortable next step</b>, a <b class="s">stretch</b>, and a <b class="r">reach</b> — each with the musical bridge explained.
+        Recommendations are generated fresh each time, so the same search will suggest different works on different days. There are many good routes out of any piece of music.
       </div>
     </section>
     </main>
@@ -577,6 +594,15 @@
 
     if (recognised) {
       (data.recs || []).forEach(function(r){ spine.appendChild(buildStep(r)); });
+
+      var again = el('div', 'again');
+      var btn = el('button', null, 'Trace another line');
+      btn.type = 'button';
+      btn.addEventListener('click', function(){ search(); });
+      again.appendChild(btn);
+      again.appendChild(el('div', 'why',
+        'There is no single right answer. Search the same thing again and you will get a different route — that is the point, not a fault.'));
+      spine.appendChild(again);
     } else {
       // No recommendations. Offer a way forward instead of a dead end.
       var nudge = el('div', 'nudge');

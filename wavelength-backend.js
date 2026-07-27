@@ -321,9 +321,17 @@ if (process.env.SELFTEST_TOKEN) {                                    // <<< REMO
 
 // Static frontend, served last so it never shadows the API routes.
 app.use(express.static(path.join(__dirname, "public"), {
-  maxAge: "1h",
+  etag: true,
   setHeaders(res, filePath) {
-    if (filePath.endsWith(".woff2")) res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    if (filePath.endsWith(".woff2")) {
+      // Fonts never change. Cache hard.
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    } else {
+      // HTML and anything else: always revalidate. Previously cached for an
+      // hour, which meant a redeploy could leave stale pages running in open
+      // tabs and behaviour looking inconsistent between them.
+      res.setHeader("Cache-Control", "no-cache");
+    }
   },
 }));
 

@@ -60,7 +60,7 @@
   /* Guards. Long work titles, wide grids and images can each push the page
      wider than the screen; on mobile that makes the browser shrink the whole
      layout or scroll sideways. Constrain them at source. */
-  .page,.hero,.results-region,.anchor,.step-card,.sponsor,.nudge,.again{max-width:100%;min-width:0}
+  .page,.hero,.results-region,.anchor,.step-card,.sponsor,.nudge,.again,.legal-footer{max-width:100%;min-width:0}
   .a-title,.step .work,.step .composer,.step .bridge,.anchor .a-desc{overflow-wrap:anywhere}
   img,svg{max-width:100%}
 
@@ -417,6 +417,26 @@
   }
   .skip:focus{left:0}
   .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+  /* Scroll hint — shows user there's content below */
+  .scroll-hint{
+    position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+    font-size:20px;color:var(--anchor);opacity:.6;animation:bob 2s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes bob{0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(8px);}}
+  .hero.searched .scroll-hint{display:none}
+
+  /* Legal footer — always visible */
+  .legal-footer{
+    text-align:center;padding:20px;border-top:1px solid var(--line);
+    font-family:"Space Grotesk",sans-serif;font-size:.9rem;color:var(--muted);
+    margin-top:20px;
+  }
+  .legal-footer a{color:var(--muted);text-decoration:none;border:none;margin:0 12px}
+  .legal-footer a:hover{color:var(--ink)}
+  .legal-footer span{color:var(--line)}
+
   @media(prefers-reduced-motion:reduce){
     .wave .pulse{animation:none}
     .spinner{animation-duration:2s}
@@ -473,6 +493,7 @@
         <span>Tracing the line…</span>
       </div>
       <div class="error" id="error" role="alert"></div>
+      <div class="scroll-hint" id="scrollHint" aria-hidden="true">↓</div>
     </section>
 
     <section class="results-region" id="resultsRegion" aria-live="polite" aria-busy="false">
@@ -485,11 +506,6 @@
 
       <div class="footnote">
         Three steps out, every time: a <b class="n">comfortable next step</b>, a <b class="s">stretch</b>, and a <b class="r">reach</b> — each with the musical bridge explained.
-      </div>
-      <div style="text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid var(--line);font-family:'Space Grotesk',sans-serif;font-size:.9rem">
-        <a href="/terms.html" style="color:var(--muted);text-decoration:none;margin:0 12px;border:none">Terms of Use</a>
-        <span style="color:var(--line)">·</span>
-        <a href="/privacy.html" style="color:var(--muted);text-decoration:none;margin:0 12px;border:none">Privacy Notice</a>
       </div>
     </section>
 
@@ -507,6 +523,12 @@
           </div>
     </aside>
     </main>
+
+    <footer class="legal-footer">
+      <a href="/terms.html">Terms of Use</a>
+      <span>·</span>
+      <a href="/privacy.html">Privacy Notice</a>
+    </footer>
   </div>
 
   <button class="fab" id="fab" type="button" aria-haspopup="dialog">
@@ -595,6 +617,8 @@
   var page   = document.querySelector('.page');
   var spine = document.getElementById('spine');
   var chipWrap = document.getElementById('chips');
+  var hero = document.querySelector('.hero');
+  var scrollHint = document.getElementById('scrollHint');
 
   var LABELS = {1:"Comfortable next step", 2:"A stretch", 3:"A reach"};
   var CLASSES = {1:"near", 2:"stretch", 3:"reach"};
@@ -707,6 +731,7 @@
     document.getElementById('fbQuery').value = recognised ? (data.title || '') : q.value;
     region.classList.add('show');
     page.classList.add('with-results');
+    if (scrollHint) scrollHint.style.display = 'none';
   }
 
   function setBusy(on){
@@ -788,6 +813,7 @@
     errorEl.classList.remove('show');
     region.classList.remove('show');
     page.classList.remove('with-results');
+    if (scrollHint) scrollHint.style.display = '';
     q.focus();
   });
   syncClear();

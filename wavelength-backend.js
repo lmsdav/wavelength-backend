@@ -95,6 +95,9 @@ if (!process.env.ANTHROPIC_API_KEY) {
 }
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// ---- feedback configuration ----
+const feedbackReady = !!(process.env.FEEDBACK_FORM_URL && process.env.FEEDBACK_FIELD_MAP);
+
 // ------------------------------------------------------------------ prompt --
 const PROMPT = (val) => `You are a knowledgeable, non-snobby classical music guide.
 

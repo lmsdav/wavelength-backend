@@ -299,7 +299,9 @@
   /* ---- sponsor rail ---- */
   aside.rail{align-self:start;display:none}
   .page.with-results aside.rail{display:block}
-  @media(min-width:900px){ aside.rail{position:sticky;top:24px} }
+  @media(min-width:900px){
+    aside.rail{position:sticky;top:98px;}
+  }
   .sponsor{
     background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:16px 18px;box-shadow:var(--shadow);
@@ -418,14 +420,14 @@
   .skip:focus{left:0}
   .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-  /* Scroll hint — shows user there's content below */
+  /* Scroll hint — shows only when results exist (content to scroll to) */
   .scroll-hint{
     position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
     font-size:20px;color:var(--anchor);opacity:.6;animation:bob 2s ease-in-out infinite;
-    pointer-events:none;
+    pointer-events:none;display:none;
   }
   @keyframes bob{0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(8px);}}
-  .hero.searched .scroll-hint{display:none}
+  .page.with-results .scroll-hint{display:block}
 
   /* Legal footer — always visible */
   .legal-footer{
@@ -731,7 +733,7 @@
     document.getElementById('fbQuery').value = recognised ? (data.title || '') : q.value;
     region.classList.add('show');
     page.classList.add('with-results');
-    if (scrollHint) scrollHint.style.display = 'none';
+    window.scrollTo({top: hero.offsetTop, behavior: 'smooth'});
   }
 
   function setBusy(on){
@@ -813,7 +815,6 @@
     errorEl.classList.remove('show');
     region.classList.remove('show');
     page.classList.remove('with-results');
-    if (scrollHint) scrollHint.style.display = '';
     q.focus();
   });
   syncClear();

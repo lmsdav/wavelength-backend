@@ -340,87 +340,6 @@ app.post("/api/recommend", rateLimit, async (req, res) => {
   });
 });
 
-/* =============================================================================
-   SELF-TEST ROUTE — TEMPORARY. REMOVE BEFORE PRODUCTION (M5). RAID I-17.
-   -----------------------------------------------------------------------------
-   Only mounts if the SELFTEST_TOKEN environment variable is set, so it can be
-   switched off instantly by deleting that variable in Railway — no redeploy.
-
-   TO REMOVE COMPLETELY (three deletions):
-     1. delete the file  selftest.js
-     2. delete the two lines below marked  <<< REMOVE
-     3. delete the SELFTEST_TOKEN variable in Railway
-   ========================================================================== */
-if (process.env.SELFTEST_TOKEN) {                                    // <<< REMOVE
-  const { mountSelfTest } = await import("./selftest.js");           // <<< REMOVE
-  mountSelfTest(app, { getRecommendation, CONFIG });                 // <<< REMOVE
-  console.log(JSON.stringify({ event: "selftest_mounted", warning: "REMOVE BEFORE PRODUCTION" }));
-}                                                                    // <<< REMOVE
-
-/* ---------------------------------------------------------------- feedback --
-   Posts to a Google Form. The form URL and field IDs come from environment
-   variables so no Google account details live in the repository.
-
-   Set in Railway once the form exists:
-     FEEDBACK_FORM_URL   the .../formResponse address
-     FEEDBACK_FIELD_MAP  JSON, e.g.
-       {"query":"entry.123","helpful":"entry.456","best":"entry.789",
-        "note":"entry.101","email":"entry.112","device":"entry.131"}
-
-   If either is unset the endpoint returns 503 and the page tells the user
-   plainly that it did not send. It never pretends. RAID I-20.
-   ------------------------------------------------------------------------ */
-const FEEDBACK_URL = process.env.FEEDBACK_FORM_URL;
-let FEEDBACK_MAP = null;
-try {
-  FEEDBACK_MAP = process.env.FEEDBACK_FIELD_MAP ? JSON.parse(process.env.FEEDBACK_FIELD_MAP) : null;
-} catch {
-  console.error(JSON.stringify({ event: "feedback_config_error", detail: "FEEDBACK_FIELD_MAP is not valid JSON" }));
-}
-const feedbackReady = Boolean(FEEDBACK_URL && FEEDBACK_MAP);
-
-const LIMITS = { query: 200, helpful: 20, best: 20, note: 1000, email: 120, device: 300 };
-
-app.post("/api/feedback", rateLimit, async (req, res) => {
-  if (!feedbackReady) {
-    console.error(JSON.stringify({ event: "feedback_not_configured" }));
-    return res.status(503).json({ error: "Feedback is not switched on yet." });
-  }
-
-  const body = req.body || {};
-  const params = new URLSearchParams();
-  let any = false;
-
-  for (const [key, limit] of Object.entries(LIMITS)) {
-    const field = FEEDBACK_MAP[key];
-    if (!field) continue;
-    const raw = body[key];
-    if (typeof raw !== "string") continue;
-    const value = raw.trim().slice(0, limit);
-    if (!value) continue;
-    params.append(field, value);
-    if (key !== "device") any = true;
-  }
-
-  if (!any) return res.status(400).json({ error: "Nothing to send." });
-
-  try {
-    const upstream = await fetch(FEEDBACK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: params.toString(),
-      signal: AbortSignal.timeout(10000),
-    });
-    // Google answers 200 on success and often 302 on redirect; both mean accepted.
-    if (!upstream.ok && upstream.status !== 302) throw new Error("status " + upstream.status);
-    console.log(JSON.stringify({ event: "feedback_sent", fields: params.size }));
-    return res.json({ ok: true });
-  } catch (err) {
-    console.error(JSON.stringify({ event: "feedback_failed", message: err && err.message }));
-    return res.status(502).json({ error: "Could not save your feedback." });
-  }
-});
-
 // Static frontend, served last so it never shadows the API routes.
 app.use(express.static(path.join(__dirname, "public"), {
   etag: true,
@@ -447,7 +366,7 @@ app.listen(port, () => {
     port,
     model: CONFIG.model,
     rateLimit: `${CONFIG.rateLimit.max}/IP/hour`,
-    feedback: feedbackReady ? "configured" : "NOT CONFIGURED — do not share with testers",
+    feedback: feedbackReady ? "configured" : "NOT CONFIGURED",
     corsMode: ALLOWED_ORIGIN ? `allowlist: ${ALLOWED_ORIGIN}` : "same-origin only",
   }));
 });

@@ -327,7 +327,7 @@
 
   /* ---- footer note ---- */
   .footnote{
-    border-top:1px solid var(--line);margin-top:20px;padding:22px 0 60px;
+    border-top:1px solid var(--line);margin-top:20px;padding:22px 0 20px;
     text-align:center;color:var(--muted);font-size:.95rem;max-width:640px;margin-inline:auto;
   }
   .footnote b.n{color:var(--near-text)} .footnote b.s{color:var(--stretch-text)} .footnote b.r{color:var(--reach-text)}
@@ -486,8 +486,8 @@
       <div class="chips" id="chips"></div>
 
       <svg class="wave" viewBox="0 0 560 46" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M2 23 C 42 2, 82 44, 122 23 S 202 2, 242 23 S 322 44, 362 23 S 442 2, 482 23 S 558 30, 558 23"/>
-        <path class="pulse" d="M2 23 C 42 2, 82 44, 122 23 S 202 2, 242 23 S 322 44, 362 23 S 442 2, 482 23 S 558 30, 558 23"/>
+        <path d="M2 23 C 42 2, 82 44, 122 23 S 202 2, 242 23 S 322 44, 362 23 S 442 2, 482 23 S 558 30, 558 23" stroke-width="3.5"/>
+        <path class="pulse" d="M2 23 C 42 2, 82 44, 122 23 S 202 2, 242 23 S 322 44, 362 23 S 442 2, 482 23 S 558 30, 558 23" stroke-width="3.5"/>
       </svg>
 
       <div class="status" id="status" role="status" aria-live="polite">
@@ -499,16 +499,16 @@
     </section>
 
     <section class="results-region" id="resultsRegion" aria-live="polite" aria-busy="false">
+      <div class="footnote">
+        Three steps out, every time: a <b class="n">comfortable next step</b>, a <b class="s">stretch</b>, and a <b class="r">reach</b> — each with the musical bridge explained.
+      </div>
+
           <div class="anchor">
             <div class="tag">Your starting point</div>
             <h2 class="a-title" id="aTitle"></h2>
             <div class="a-desc" id="aDesc"></div>
           </div>
           <div class="spine" id="spine"></div>
-
-      <div class="footnote">
-        Three steps out, every time: a <b class="n">comfortable next step</b>, a <b class="s">stretch</b>, and a <b class="r">reach</b> — each with the musical bridge explained.
-      </div>
     </section>
 
     <!-- Sponsor rail. Unpaid links — see the label-slot comment in the CSS above. -->

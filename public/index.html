@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Type in a piece, a composer, an artist or even a pop song, and get three classical works that lead your ear outward from there.">
+<title>Classical Wavelength</title>
+
+<!-- ============================================================
+     FONTS — self-hosted. No third-party request (DEC-21 / RAID R-23).
+     Files live in /public/fonts. Do not replace with a Google Fonts
+     link: that would send every visitor's IP to Google.
+     ============================================================ -->
+<style>
+  @font-face{font-family:'Fraunces';src:url('/fonts/fraunces-latin-400-normal.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'Fraunces';src:url('/fonts/fraunces-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:'Spectral';src:url('/fonts/spectral-latin-400-normal.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'Spectral';src:url('/fonts/spectral-latin-600-normal.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
+  @font-face{font-family:'Space Grotesk';src:url('/fonts/space-grotesk-latin-400-normal.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'Space Grotesk';src:url('/fonts/space-grotesk-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
+
+  :root{
+    --ink:#14161C;
+    --paper:#F6F7FA;
+    --card:#FFFFFF;
+    --muted:#5B6070;
+    --line:#E4E7EE;
+    --anchor:#4338CA;   /* indigo — the starting point */
+    --near:#0F9C8E;     /* teal — comfortable step */
+    --stretch:#C9860A;  /* amber — stretch */
+    --reach:#E1436B;    /* rose — reach */
+    --spectrum:linear-gradient(90deg,#4338CA,#0F9C8E,#C9860A,#E1436B);
+    /* WCAG 2.1 AA. The vivid colours above are used for dots, borders and the
+       gradient, which as non-text UI need only 3:1 and pass. Text needs 4.5:1,
+       which they do not meet, so these darker variants are used wherever the
+       colour carries words. Both sets verified against #FFFFFF and #F6F7FA. */
+    --near-text:#0C7E73;
+    --stretch-text:#9A6708;
+    --reach-text:#DA2351;
+    --placeholder-text:#6B7183;
+    --clearx-text:#697184;
+    --shadow:0 1px 2px rgba(20,22,28,.04),0 12px 32px rgba(20,22,28,.06);
+    --control-h:48px;   /* field and button share this. 48px also clears the
+                           44px minimum touch target for WCAG at M5. */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  /* Do NOT add overflow-x here. On iOS Safari, overflow on the root element
+     expands the layout viewport to the content width rather than clipping it,
+     and the whole page renders at desktop width shrunk down. Keep it on body. */
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:"Spectral",Georgia,serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .wrap{max-width:1080px;width:100%;margin:0 auto;padding:0 20px}
+  /* Guards. Long work titles, wide grids and images can each push the page
+     wider than the screen; on mobile that makes the browser shrink the whole
+     layout or scroll sideways. Constrain them at source. */
+  .page,.hero,.results-region,.anchor,.step-card,.sponsor,.nudge,.again,.legal-footer{max-width:100%;min-width:0}
+  .a-title,.step .work,.step .composer,.step .bridge,.anchor .a-desc{overflow-wrap:anywhere}
+  img,svg{max-width:100%}
+
+  /* ---- top bar ---- */
+  header.top{padding:22px 0 6px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand svg{width:26px;height:26px;flex:none}
+  .brand .name{
+    font-family:"Space Grotesk",sans-serif;
+    font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink);font-weight:500;
+  }
+  .brand-row{display:flex;align-items:center;gap:12px}
+
+  /* ---- hero ---- */
+  .hero{padding:44px 0 8px;text-align:center;max-width:720px;margin:0 auto}
+  .eyebrow{
+    font-family:"Space Grotesk",sans-serif;text-transform:uppercase;
+    letter-spacing:.22em;font-size:12px;color:var(--muted);margin-bottom:18px;
+  }
+  h1{
+    font-family:"Fraunces",Georgia,serif;font-weight:500;
+    font-size:clamp(2.1rem,6vw,3.6rem);line-height:1.05;
+    letter-spacing:-.01em;margin-bottom:16px;
+  }
+  .subtitle{
+    font-size:clamp(1rem,2.6vw,1.18rem);color:var(--muted);
+    max-width:34ch;margin:0 auto 30px;
+  }
+
+  /* ---- search ---- */
+  .search{
+    display:flex;align-items:stretch;gap:10px;max-width:min(560px,100%);margin:0 auto;
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:8px;box-shadow:var(--shadow);
+    transition:border-color .2s,box-shadow .2s;
+  }
+  .search:focus-within{border-color:var(--anchor);box-shadow:0 0 0 4px rgba(67,56,202,.10),var(--shadow)}
+  .search input{
+    flex:1;width:100%;min-width:0;border:0;background:transparent;
+    font-family:"Space Grotesk",sans-serif;font-size:16px;color:var(--ink);
+    height:var(--control-h);line-height:var(--control-h);padding:0 14px;
+    -webkit-appearance:none;appearance:none;border-radius:11px;
+  }
+  .search input::placeholder{color:var(--placeholder-text)}
+  .search input:focus{outline:none}
+  .search button{
+    font-family:"Space Grotesk",sans-serif;font-size:15px;font-weight:500;
+    color:#fff;background:var(--ink);border:0;border-radius:11px;
+    height:var(--control-h);line-height:1;padding:0 22px;
+    display:inline-flex;align-items:center;justify-content:center;
+    cursor:pointer;transition:transform .12s,background .2s;flex:none;
+    -webkit-appearance:none;appearance:none;
+  }
+  .search button:hover:not(:disabled){background:#2a2d38}
+  .search button:active:not(:disabled){transform:scale(.97)}
+  .search button:disabled{opacity:.55;cursor:not-allowed}
+
+  /* Below 560px the button drops beneath the field so the placeholder is never
+     truncated. Fixes the issue seen on iPhone, iPad and narrow desktop windows. */
+  @media(max-width:560px){
+    .search{flex-direction:column;gap:8px}
+    .search .field{width:100%}
+    .search input{width:100%;text-align:center;padding:0 36px}
+    .search button{width:100%}
+  }
+  /* clear button inside the field */
+  .search .field{position:relative;flex:1;display:flex;align-items:stretch;min-width:0;height:var(--control-h)}
+  .search .clear{
+    position:absolute;right:2px;top:50%;transform:translateY(-50%);
+    width:44px;height:44px;border:0;background:transparent;color:var(--clearx-text);
+    font-size:19px;line-height:1;cursor:pointer;border-radius:50%;padding:0;
+    display:none;align-items:center;justify-content:center;flex:none;
+  }
+  .search .clear:hover{background:rgba(20,22,28,.06);color:var(--ink)}
+  .search .clear{font-size:20px}
+  .search .clear.show{display:flex}
+  .search input{padding-right:44px}
+  @media(max-width:560px){.search .field{width:100%}}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:18px auto 0;max-width:min(600px,100%)}
+  .chips-label{
+    font-family:"Space Grotesk",sans-serif;font-size:12px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--muted);margin-right:2px;
+  }
+  @media(max-width:560px){.chips-label{flex-basis:100%;text-align:center;margin:0 0 2px}}
+  .chip{
+    position:relative;
+    font-family:"Space Grotesk",sans-serif;font-size:13px;color:var(--anchor);
+    background:rgba(67,56,202,.06);border:1px solid rgba(67,56,202,.16);
+    border-radius:999px;padding:7px 14px;cursor:pointer;transition:background .18s;
+  }
+  /* The visible chip stays compact; the tappable area is padded out to 44px so
+     it meets the minimum target size on phones without changing the design. */
+  .chip::after{content:"";position:absolute;left:0;right:0;top:50%;
+    transform:translateY(-50%);height:44px}
+  .chip:hover{background:rgba(67,56,202,.12)}
+
+  /* ---- signature wave ---- */
+  .wave{max-width:min(560px,100%);width:100%;margin:36px auto 0;height:46px;opacity:.9;display:block}
+  .wave path{fill:none;stroke:url(#spec);stroke-width:2.4;stroke-linecap:round}
+  .wave .pulse{stroke-dasharray:6 260;stroke-dashoffset:0;animation:trace 3.4s linear infinite}
+  @keyframes trace{to{stroke-dashoffset:-532}}
+
+  /* ---- status + error ---- */
+  .status{
+    display:none;align-items:center;justify-content:center;gap:10px;
+    font-family:"Space Grotesk",sans-serif;font-size:14px;color:var(--anchor);
+    margin:24px auto 0;
+  }
+  .status.show{display:flex}
+  .spinner{
+    width:16px;height:16px;border:2px solid var(--anchor);border-top-color:transparent;
+    border-radius:50%;animation:spin .6s linear infinite;flex:none;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .error{
+    display:none;max-width:560px;margin:24px auto 0;padding:14px 16px;
+    border-radius:12px;background:#FEECEF;border:1px solid #F7C9D2;color:#8E1F38;
+    font-size:.97rem;
+  }
+  .error.show{display:block}
+
+  /* ---- page layout ----
+     One grid holds everything, so the hero and the results share a single
+     column and line up. Previously the hero was centred on the full page while
+     the results were centred on a narrower column squeezed by the rail, and the
+     two did not agree. The rail now sits alongside both. */
+  /* Before a search: one centred column, no rail — a clean opening page.
+     Once there are results: the column narrows, everything shifts left
+     together, and the rail appears alongside. Hero and results always share
+     one column, so they stay aligned with each other. */
+  .page{display:grid;grid-template-columns:1fr;column-gap:26px;row-gap:0;align-items:start}
+  @media(min-width:900px){
+    .page.with-results{grid-template-columns:minmax(0,1fr) 260px}
+    /* Hero sits in row 1, footnote in row 2 (spans both), results in row 3,
+       rail alongside ROW 3 — so sponsor cards align with anchor top. */
+    .page.with-results .hero          {grid-column:1;grid-row:1}
+    .page.with-results .footnote      {grid-column:1/-1;grid-row:2}
+    .page.with-results .results-region{grid-column:1;grid-row:3}
+    .page.with-results aside.rail     {grid-column:2;grid-row:3}
+  }
+  /* On desktop, move footnote into grid flow */
+  @media(min-width:900px){
+    .footnote{margin:0 0 0 0}
+  }
+  .results-region{padding:0 0 40px;display:none}
+  /* Clear space beneath everything so the floating Feedback button never
+     covers the final card when scrolled to the bottom. */
+  .page{padding-bottom:88px}
+  .results-region.show{display:block}
+
+  .anchor{
+    background:var(--card);border:1px solid var(--line);border-left:4px solid var(--anchor);
+    border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);margin-bottom:6px;
+  }
+  .anchor .tag{
+    font-family:"Space Grotesk",sans-serif;font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--anchor);margin-bottom:6px;
+  }
+  .anchor .a-title{font-family:"Fraunces",Georgia,serif;font-size:1.35rem;font-weight:500;margin-bottom:4px}
+  .anchor .a-desc{color:var(--muted);font-size:.98rem}
+
+  /* Unrecognised input: no recommendations, no spine, no step labels.
+     An input we could not identify has no "next step" to offer, so showing
+     three would be incoherent. We say so plainly and point at the examples. */
+  .anchor.unknown{border-left-color:var(--muted)}
+  .anchor.unknown .tag{color:var(--muted)}
+  .nudge{
+    background:var(--card);border:1px dashed var(--line);border-radius:14px;
+    padding:18px 20px;margin-top:12px;text-align:center;color:var(--muted);font-size:.98rem;
+  }
+  .nudge button{
+    font-family:"Space Grotesk",sans-serif;font-size:13px;color:var(--anchor);
+    background:rgba(67,56,202,.06);border:1px solid rgba(67,56,202,.16);
+    border-radius:999px;padding:11px 16px;cursor:pointer;margin:8px 4px 0;min-height:44px;
+  }
+  .nudge button:hover{background:rgba(67,56,202,.12)}
+
+  /* the spine of three steps */
+  .spine{position:relative;margin-top:8px;padding-left:26px}
+  .spine.hidden::before{display:none}
+  .spine.hidden{padding-left:0}
+  .spine::before{
+    content:"";position:absolute;left:7px;top:14px;bottom:14px;width:2px;
+    background:var(--spectrum);border-radius:2px;
+  }
+  .step{position:relative;margin:16px 0}
+  .step::before{
+    content:"";position:absolute;left:-26px;top:22px;width:16px;height:16px;
+    border-radius:50%;background:var(--card);border:3px solid var(--dot);
+  }
+  .step-card{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:20px 22px;box-shadow:var(--shadow);
+  }
+  .step .dist{
+    font-family:"Space Grotesk",sans-serif;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--dot-text);font-weight:500;margin-bottom:8px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .step .dist::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--dot);flex:none}
+  .step .work{font-family:"Fraunces",Georgia,serif;font-size:1.28rem;font-weight:500;line-height:1.2;margin:0}
+  .step .composer{
+    font-family:"Space Grotesk",sans-serif;font-size:.83rem;letter-spacing:.02em;
+    color:var(--muted);margin:3px 0 12px;text-transform:uppercase;
+  }
+  .step .bridge{font-size:1.02rem;color:#2b2e39;margin-bottom:14px}
+  .step .bridge b{color:var(--dot-text);font-weight:600}
+  .step .listen{
+    font-family:"Space Grotesk",sans-serif;font-size:.85rem;font-weight:500;
+    color:var(--dot-text);text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+    min-height:44px;
+    border-bottom:1px solid transparent;transition:border-color .18s;
+  }
+  .step .listen:hover{border-color:var(--dot)}
+  .step .listen svg{width:15px;height:15px;flex:none}
+
+  /* --dot drives the marker and the ring; --dot-text drives anything readable. */
+  .near   {--dot:var(--near);    --dot-text:var(--near-text)}
+  .stretch{--dot:var(--stretch); --dot-text:var(--stretch-text)}
+  .reach  {--dot:var(--reach);   --dot-text:var(--reach-text)}
+
+  /* Results vary between identical searches because there is no single correct
+     bridge — dozens are defensible. Rather than apologise for that, we make it
+     something the user can do on purpose. */
+  .again{margin:18px 0 0;text-align:center}
+  .again button{
+    font-family:"Space Grotesk",sans-serif;font-size:14px;font-weight:500;
+    color:var(--anchor);background:var(--card);border:1px solid rgba(67,56,202,.25);
+    border-radius:999px;padding:11px 20px;cursor:pointer;transition:background .18s;
+  }
+  .again button:hover:not(:disabled){background:rgba(67,56,202,.06)}
+  .again button:disabled{opacity:.5;cursor:not-allowed}
+  .again .why{
+    font-size:.88rem;color:var(--muted);margin-top:9px;max-width:44ch;
+    margin-inline:auto;line-height:1.5;
+  }
+
+  /* ---- sponsor rail ---- */
+  aside.rail{align-self:start;display:none}
+  .page.with-results aside.rail{display:block}
+  @media(min-width:900px){
+    aside.rail{position:sticky;top:24px;}
+  }
+  .sponsor{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;box-shadow:var(--shadow);
+  }
+  /* ------------------------------------------------------------------
+     SPONSOR LABEL SLOT — removed 26 Jul 2026 at Sean's instruction.
+     These links are unpaid, so no advertising disclosure is required.
+     RAID A-10 — STANDING CONDITION: if a sponsor is ever PAID, the
+     label MUST be reinstated. To bring it back, un-comment .lbl below
+     and the matching <div class="lbl"> in each .sponsor block.
+       .lbl{font-family:"Space Grotesk",sans-serif;font-size:10px;
+            letter-spacing:.16em;text-transform:uppercase;
+            color:#9aa0af;margin-bottom:10px}
+     ------------------------------------------------------------------ */
+  .sponsor h3{font-family:"Fraunces",Georgia,serif;font-weight:500;font-size:1.08rem;margin-bottom:4px}
+  .sponsor p{font-size:.9rem;color:var(--muted);margin-bottom:12px}
+  .sponsor a{
+    font-family:"Space Grotesk",sans-serif;font-size:.82rem;color:var(--anchor);
+    text-decoration:none;font-weight:500;display:inline-flex;align-items:center;min-height:44px;
+  }
+  .sponsor a:hover{text-decoration:underline}
+  .sponsor + .sponsor{margin-top:16px}
+
+  /* ---- footer note ---- */
+  .footnote{
+    border-top:none;margin:0 0 16px 0;padding:0;
+    text-align:center;color:var(--muted);font-size:.95rem;max-width:640px;margin-inline:auto;
+  }
+  .footnote b.n{color:var(--near-text)} .footnote b.s{color:var(--stretch-text)} .footnote b.r{color:var(--reach-text)}
+
+  /* ---- feedback button + modal ---- */
+  .fab{
+    position:fixed;z-index:40;
+    right:max(18px, env(safe-area-inset-right));
+    bottom:max(18px, env(safe-area-inset-bottom));
+    max-width:calc(100% - 36px);
+    font-family:"Space Grotesk",sans-serif;font-size:14px;font-weight:500;
+    background:var(--ink);color:#fff;border:0;border-radius:999px;
+    padding:12px 18px;cursor:pointer;box-shadow:0 8px 24px rgba(20,22,28,.22);
+    display:inline-flex;align-items:center;gap:8px;
+  }
+  .fab svg{width:16px;height:16px}
+  .overlay{
+    position:fixed;inset:0;background:rgba(20,22,28,.42);z-index:50;
+    display:none;align-items:flex-end;justify-content:center;padding:0;
+  }
+  @media(min-width:640px){.overlay{align-items:center;padding:20px}}
+  .overlay.open{display:flex}
+  .modal{
+    background:var(--card);width:100%;max-width:min(440px,100%);
+    border-radius:20px 20px 0 0;padding:24px 22px 26px;box-shadow:var(--shadow);
+    max-height:92dvh;overflow-y:auto;overflow-x:hidden;
+    padding-bottom:calc(26px + env(safe-area-inset-bottom));
+  }
+  .modal *{max-width:100%;min-width:0}
+  @media(min-width:640px){.modal{border-radius:20px}}
+  .modal h3{font-family:"Fraunces",Georgia,serif;font-weight:500;font-size:1.4rem;margin-bottom:4px}
+  .modal .sub{color:var(--muted);font-size:.92rem;margin-bottom:18px}
+  .field{margin-bottom:14px}
+  .field label{
+    display:block;font-family:"Space Grotesk",sans-serif;font-size:12px;
+    letter-spacing:.04em;color:var(--ink);margin-bottom:6px;
+  }
+  .field input, .field textarea{
+    width:100%;max-width:100%;box-sizing:border-box;border:1px solid var(--line);
+    border-radius:10px;padding:11px 12px;font-family:"Space Grotesk",sans-serif;
+    font-size:16px;   /* 16px stops iOS zooming the page when the field is focused */
+    color:var(--ink);background:var(--paper);
+  }
+  .field textarea{resize:vertical}
+  .field input:focus,.field textarea:focus{outline:none;border-color:var(--anchor)}
+  .field .hint{font-family:"Space Grotesk",sans-serif;font-size:11px;color:var(--muted);margin-top:5px}
+  .yn{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .yn button{
+    width:100%;min-width:0;min-height:44px;font-family:"Space Grotesk",sans-serif;font-size:14px;padding:10px 6px;
+    border:1px solid var(--line);background:var(--paper);border-radius:10px;cursor:pointer;color:var(--ink);
+  }
+  .yn button.sel{border-color:var(--anchor);background:rgba(67,56,202,.08);color:var(--anchor)}
+  /* Which of the three worked best — tells us whether the three-step idea
+     is landing, or whether people only ever want the safe one. */
+  /* Two by two on a phone — four across does not fit, and forcing it made the
+     whole panel wider than the screen. Four across only above 420px. */
+  .pick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  @media(min-width:420px){ .pick{grid-template-columns:repeat(4,minmax(0,1fr))} }
+  .pick button{
+    width:100%;min-width:0;min-height:44px;font-family:"Space Grotesk",sans-serif;font-size:13px;
+    padding:10px 4px;border:1px solid var(--line);background:var(--paper);
+    border-radius:10px;cursor:pointer;color:var(--ink);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .pick button[data-v="near"].sel{border-color:var(--near);background:rgba(15,156,142,.10);color:var(--near-text)}
+  .pick button[data-v="stretch"].sel{border-color:var(--stretch);background:rgba(201,134,10,.10);color:var(--stretch-text)}
+  .pick button[data-v="reach"].sel{border-color:var(--reach);background:rgba(225,67,107,.10);color:var(--reach-text)}
+  .pick button[data-v="none"].sel{border-color:var(--muted);background:rgba(91,96,112,.10);color:var(--muted)}
+  .modal .actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .modal .send{
+    flex:1 1 60%;min-width:0;background:var(--ink);color:#fff;border:0;border-radius:11px;
+    padding:13px 12px;font-family:"Space Grotesk",sans-serif;font-size:15px;font-weight:500;cursor:pointer;
+  }
+  .modal .send:disabled{opacity:.6;cursor:not-allowed}
+  .modal .cancel{
+    flex:0 1 auto;min-width:0;background:transparent;border:1px solid var(--line);border-radius:11px;
+    padding:13px 16px;font-family:"Space Grotesk",sans-serif;font-size:15px;cursor:pointer;color:var(--muted);
+  }
+  .thanks{text-align:center;padding:14px 0}
+  .thanks .big{font-family:"Fraunces",Georgia,serif;font-size:1.4rem;margin-bottom:6px}
+  .thanks p{color:var(--muted);font-size:.95rem}
+
+  :focus-visible{outline:3px solid var(--anchor);outline-offset:2px;border-radius:4px}
+  /* Keyboard users land here first and can jump past the header. */
+  .skip{
+    position:absolute;left:-9999px;top:0;z-index:100;
+    background:var(--ink);color:#fff;padding:12px 18px;border-radius:0 0 10px 0;
+    font-family:"Space Grotesk",sans-serif;font-size:14px;text-decoration:none;
+  }
+  .skip:focus{left:0}
+  .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+  /* Scroll hint — shows only when results exist (content to scroll to) */
+  .scroll-hint{
+    position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+    font-size:20px;color:var(--anchor);opacity:.6;animation:bob 2s ease-in-out infinite;
+    pointer-events:none;display:none;
+  }
+  @keyframes bob{0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(8px);}}
+  .page.with-results .scroll-hint{display:block}
+
+  /* Legal footer — always visible */
+  .legal-footer{
+    text-align:center;padding:20px;border-top:1px solid var(--line);
+    font-family:"Space Grotesk",sans-serif;font-size:.9rem;color:var(--muted);
+    margin-top:20px;
+  }
+  .legal-footer a{color:var(--muted);text-decoration:none;border:none;margin:0 12px}
+  .legal-footer a:hover{color:var(--ink)}
+  .legal-footer span{color:var(--line)}
+
+  @media(prefers-reduced-motion:reduce){
+    .wave .pulse{animation:none}
+    .spinner{animation-duration:2s}
+    *{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="spec" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#4338CA"/><stop offset=".38" stop-color="#0F9C8E"/>
+        <stop offset=".72" stop-color="#C9860A"/><stop offset="1" stop-color="#E1436B"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <a class="skip" href="#q">Skip to search</a>
+
+  <div class="wrap">
+    <header class="top">
+      <div class="brand-row">
+        <div class="brand">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12C4 7 6 17 8 12C10 7 12 17 14 12C16 7 18 17 20 12C21 9.5 22 11 22 12" fill="none" stroke="url(#spec)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="name">Classical Wavelength</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="page">
+    <section class="hero">
+      <div class="eyebrow">Find your next piece</div>
+      <h1>What do you already love?</h1>
+      <p class="subtitle">A piece, a composer, an artist — even a pop song. Get three classical works that lead your ear outward from there.</p>
+
+      <div class="search" role="search">
+        <label class="visually-hidden" for="q">What do you already love?</label>
+        <span class="field">
+          <input id="q" type="text" autocomplete="off" maxlength="200"
+                 placeholder="A piece, composer, artist or song">
+          <button type="button" class="clear" id="clear" aria-label="Clear">&times;</button>
+        </span>
+        <button id="go" type="button">Trace the line</button>
+      </div>
+      <div class="chips" id="chips"></div>
+
+      <svg class="wave" viewBox="0 0 560 46" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M2 23 C 42 2, 82 44, 122 23 S 202 2, 242 23 S 322 44, 362 23 S 442 2, 482 23 S 558 30, 558 23" stroke-width="3.5"/>
+        <path class="pulse" d="M2 23 C 42 2, 82 44, 122 23 S 202 2, 242 23 S 322 44, 362 23 S 442 2, 482 23 S 558 30, 558 23" stroke-width="3.5"/>
+      </svg>
+
+      <div class="status" id="status" role="status" aria-live="polite">
+        <div class="spinner"></div>
+        <span>Tracing the line…</span>
+      </div>
+      <div class="error" id="error" role="alert"></div>
+      <div class="scroll-hint" id="scrollHint" aria-hidden="true">↓</div>
+    </section>
+
+    <div class="footnote">
+      Three steps out, every time: a <b class="n">comfortable next step</b>, a <b class="s">stretch</b>, and a <b class="r">reach</b> — each with the musical bridge explained.
+    </div>
+
+    <section class="results-region" id="resultsRegion" aria-live="polite" aria-busy="false">
+          <div class="anchor">
+            <div class="tag">Your starting point</div>
+            <h2 class="a-title" id="aTitle"></h2>
+            <div class="a-desc" id="aDesc"></div>
+          </div>
+          <div class="spine" id="spine"></div>
+    </section>
+
+    <!-- Sponsor rail. Unpaid links — see the label-slot comment in the CSS above. -->
+    <aside class="rail" aria-label="Where to hear more">
+          <div class="sponsor">
+            <h3>Hyperion Records</h3>
+            <p>New recordings, curated for listeners exploring the repertoire.</p>
+            <a href="https://www.hyperion-records.co.uk/" target="_blank" rel="noopener noreferrer">Browse the catalogue &rarr;</a>
+          </div>
+          <div class="sponsor">
+            <h3>Wigmore Hall</h3>
+            <p>Chamber music and song recitals in central London.</p>
+            <a href="https://www.wigmore-hall.org.uk/" target="_blank" rel="noopener noreferrer">See what's on &rarr;</a>
+          </div>
+    </aside>
+    </main>
+
+    <footer class="legal-footer">
+      <a href="/terms.html">Terms of Use</a>
+      <span>·</span>
+      <a href="/privacy.html">Privacy Notice</a>
+    </footer>
+  </div>
+
+  <button class="fab" id="fab" type="button" aria-haspopup="dialog">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Feedback
+  </button>
+
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="fbHeading">
+    <div class="modal" id="modal">
+      <div id="formBody">
+        <h3 id="fbHeading">How did that go?</h3>
+        <p class="sub">Two questions, thirty seconds. It genuinely shapes what gets built next.</p>
+        <div class="field">
+          <label for="fbQuery">What did you search for?</label>
+          <input type="text" id="fbQuery" maxlength="200" placeholder="e.g. Radiohead">
+        </div>
+        <div class="field">
+          <label id="ynLabel">Was the recommendation helpful?</label>
+          <div class="yn" id="yn" role="group" aria-labelledby="ynLabel">
+            <button type="button" data-v="yes">Yes</button>
+            <button type="button" data-v="no">Not really</button>
+          </div>
+        </div>
+        <div class="field">
+          <label id="pickLabel">Which of the three did you like best?</label>
+          <div class="pick" id="pick" role="group" aria-labelledby="pickLabel">
+            <button type="button" data-v="near">Comfortable</button>
+            <button type="button" data-v="stretch">Stretch</button>
+            <button type="button" data-v="reach">Reach</button>
+            <button type="button" data-v="none">None</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="fbNote">Anything you'd change? (optional)</label>
+          <textarea id="fbNote" rows="3" maxlength="1000" placeholder="Too safe, too obscure, spot on…"></textarea>
+        </div>
+        <div class="field">
+          <label for="fbEmail">Email, if you'd like a reply (optional)</label>
+          <input type="email" id="fbEmail" maxlength="120" placeholder="you@example.com">
+          <div class="hint">Leave this blank if you'd rather not. You don't need to give it.</div>
+        </div>
+        <div class="actions">
+          <button class="send" id="send" type="button">Send feedback</button>
+          <button class="cancel" id="cancel" type="button" aria-label="Close feedback without sending">Close</button>
+        </div>
+      </div>
+      <div class="thanks" id="thanks" style="display:none">
+        <div class="big">Thank you.</div>
+        <p>That's exactly the kind of note that makes this better.</p>
+        <div class="actions" style="margin-top:16px"><button class="cancel" style="flex:1" id="closeThanks" type="button">Close</button></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =================================================================
+     SECURITY — READ BEFORE EDITING (RAID I-07)
+     Model output is UNTRUSTED. It is never assigned to innerHTML.
+     Every field goes in via textContent, except the bridge sentence,
+     which passes through renderBridge() below — that allows <b> and
+     nothing else. Do not "simplify" this by using innerHTML or a
+     template literal: that reintroduces a cross-site scripting hole.
+     ================================================================= */
+
+  var MAX_INPUT = 200;
+  /* FIXED, not shuffled, and one of each kind — deliberately mirroring the
+     subtitle: a piece, a composer, an artist, a film score.
+     Previously these were four picked at random from a list that was half
+     classical, so some page loads showed four classical names and implied the
+     app only accepts classical input. That is the opposite of the point. */
+  var EXAMPLES = [
+    { term: "Elgar Cello Concerto", kind: "a piece" },
+    { term: "Tchaikovsky",          kind: "a composer" },
+    { term: "Radiohead",            kind: "an artist" },
+    { term: "Hans Zimmer",          kind: "a film score" }
+  ];
+
+  var q = document.getElementById('q');
+  var go = document.getElementById('go');
+  var statusEl = document.getElementById('status');
+  var errorEl = document.getElementById('error');
+  var region = document.getElementById('resultsRegion');
+  var page   = document.querySelector('.page');
+  var spine = document.getElementById('spine');
+  var chipWrap = document.getElementById('chips');
+  var hero = document.querySelector('.hero');
+  var scrollHint = document.getElementById('scrollHint');
+
+  var LABELS = {1:"Comfortable next step", 2:"A stretch", 3:"A reach"};
+  var CLASSES = {1:"near", 2:"stretch", 3:"reach"};
+
+  /* Allow <b> only. Everything else becomes literal text. */
+  function renderBridge(target, text){
+    target.textContent = '';
+    var s = String(text == null ? '' : text);
+    var re = /<b>(.*?)<\/b>/gi, last = 0, m;
+    while ((m = re.exec(s)) !== null){
+      if (m.index > last) target.appendChild(document.createTextNode(s.slice(last, m.index)));
+      var b = document.createElement('b');
+      b.textContent = m[1];
+      target.appendChild(b);
+      last = re.lastIndex;
+    }
+    if (last < s.length) target.appendChild(document.createTextNode(s.slice(last)));
+  }
+
+  function el(tag, cls, text){
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = String(text);
+    return n;
+  }
+
+  function youtubeUrl(composer, title){
+    var t = String(title || '').replace(/^.*—\s*/, '');
+    return 'https://www.youtube.com/results?search_query=' +
+           encodeURIComponent(String(composer || '') + ' ' + t);
+  }
+
+  var PLAY_ICON = 'M10 8 L16 12 L10 16 Z';
+
+  function buildStep(rec){
+    var step = el('div', 'step ' + (CLASSES[rec.step] || 'near'));
+    var card = el('div', 'step-card');
+
+    card.appendChild(el('div', 'dist', LABELS[rec.step] || ''));
+    card.appendChild(el('h3', 'work', rec.title));
+    card.appendChild(el('div', 'composer', rec.composer));
+
+    var bridge = el('div', 'bridge');
+    renderBridge(bridge, rec.reason);
+    card.appendChild(bridge);
+
+    var a = document.createElement('a');
+    a.className = 'listen';
+    a.href = youtubeUrl(rec.composer, rec.title);
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+
+    var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 24 24');
+    svg.setAttribute('fill','none');
+    svg.setAttribute('stroke','currentColor');
+    svg.setAttribute('stroke-width','2');
+    svg.setAttribute('aria-hidden','true');
+    var circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx','12'); circle.setAttribute('cy','12'); circle.setAttribute('r','10');
+    var tri = document.createElementNS('http://www.w3.org/2000/svg','path');
+    tri.setAttribute('d', PLAY_ICON); tri.setAttribute('fill','currentColor'); tri.setAttribute('stroke','none');
+    svg.appendChild(circle); svg.appendChild(tri);
+
+    a.appendChild(svg);
+    a.appendChild(document.createTextNode(' Listen on YouTube'));
+    a.setAttribute('aria-label', 'Listen to ' + String(rec.title || '') + ' on YouTube — opens in a new tab');
+    card.appendChild(a);
+
+    step.appendChild(card);
+    return step;
+  }
+
+  function render(data){
+    var recognised = data.recognised !== false;
+    var anchor = document.querySelector('.anchor');
+
+    anchor.classList.toggle('unknown', !recognised);
+    anchor.querySelector('.tag').textContent = recognised ? 'Your starting point' : 'Nothing to trace from';
+    document.getElementById('aTitle').textContent = data.title || '';
+    document.getElementById('aDesc').textContent  = data.desc  || '';
+
+    spine.textContent = '';
+    spine.classList.toggle('hidden', !recognised);
+
+    if (recognised) {
+      (data.recs || []).forEach(function(r){ spine.appendChild(buildStep(r)); });
+
+      var again = el('div', 'again');
+      var btn = el('button', null, 'Trace another line');
+      btn.type = 'button';
+      btn.addEventListener('click', function(){ search(); });
+      again.appendChild(btn);
+      again.appendChild(el('div', 'why',
+        'There is no single right answer. Search the same thing again and you will probably get a different route.'));
+      spine.appendChild(again);
+    } else {
+      // No recommendations. Offer a way forward instead of a dead end.
+      var nudge = el('div', 'nudge');
+      nudge.appendChild(el('div', null, 'Try one of these to see how it works:'));
+      EXAMPLES.forEach(function(ex){
+        var b = el('button', null, ex.term);
+        b.type = 'button';
+        b.addEventListener('click', function(){ q.value = ex.term; syncClear(); search(); });
+        nudge.appendChild(b);
+      });
+      spine.appendChild(nudge);
+    }
+
+    document.getElementById('fbQuery').value = recognised ? (data.title || '') : q.value;
+    region.classList.add('show');
+    page.classList.add('with-results');
+    /* Scroll to show the anchor (starting point) card at top of viewport */
+    var anchor = document.querySelector('.anchor');
+    if (anchor) {
+      var anchorTop = anchor.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({top: anchorTop - 20, behavior: 'smooth'});
+    }
+  }
+
+  function setBusy(on){
+    go.disabled = on;
+    statusEl.classList.toggle('show', on);
+    region.setAttribute('aria-busy', on ? 'true' : 'false');
+    go.setAttribute('aria-label', on ? 'Searching' : 'Trace the line');
+  }
+
+  function showError(msg){
+    errorEl.textContent = msg;
+    errorEl.classList.add('show');
+  }
+
+  function search(){
+    var val = q.value.trim();
+    if (!val) { q.focus(); return; }
+    if (val.length > MAX_INPUT) val = val.slice(0, MAX_INPUT);
+
+    setBusy(true);
+    errorEl.classList.remove('show');
+
+    fetch('/api/recommend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: val })
+    })
+    .then(function(res){
+      return res.json().catch(function(){ return {}; }).then(function(body){
+        if (!res.ok) {
+          if (res.status === 429) throw new Error(body.error || "That's a lot of searches in one go. Give it an hour and try again.");
+          throw new Error(body.error || 'Something went wrong at our end. Please try again.');
+        }
+        return body;
+      });
+    })
+    .then(function(data){
+      if (!data || !Array.isArray(data.recs)) {
+        throw new Error("We couldn't make sense of that one. Try a different piece, composer or artist.");
+      }
+      if (data.recognised !== false && data.recs.length === 0) {
+        throw new Error("We couldn't make sense of that one. Try a different piece, composer or artist.");
+      }
+      render(data);
+      hero.scrollIntoView({behavior:'smooth', block:'start'});
+    })
+    .catch(function(err){
+      showError(err.message || 'Something went wrong. Please try again.');
+    })
+    .finally(function(){ setBusy(false); });
+  }
+
+  /* chips — fixed order, labelled so they read as examples, not filters */
+  chipWrap.appendChild(el('span', 'chips-label', 'Try one:'));
+  EXAMPLES.forEach(function(ex){
+    var b = el('button', 'chip', ex.term);
+    b.type = 'button';
+    b.setAttribute('aria-label', ex.term + ' — ' + ex.kind);
+    b.title = ex.kind;
+    b.addEventListener('click', function(){ q.value = ex.term; syncClear(); search(); });
+    chipWrap.appendChild(b);
+  });
+
+  go.addEventListener('click', search);
+  q.addEventListener('keydown', function(e){ if (e.key === 'Enter') search(); });
+
+  /* Typing a second search used to append to the first. Now:
+       - focusing the box after a search selects the old text, so typing replaces it
+       - a clear button appears whenever there is text                          */
+  var clearBtn = document.getElementById('clear');
+  function syncClear(){ clearBtn.classList.toggle('show', q.value.length > 0); }
+  q.addEventListener('input', syncClear);
+  q.addEventListener('focus', function(){
+    if (q.value && region.classList.contains('show')) q.select();
+  });
+  clearBtn.addEventListener('click', function(){
+    q.value = '';
+    syncClear();
+    errorEl.classList.remove('show');
+    region.classList.remove('show');
+    page.classList.remove('with-results');
+    q.focus();
+  });
+  syncClear();
+
+  /* ---- feedback modal ----
+     M3 will POST this to a Google Form. Right now it collects and
+     acknowledges only. The email field is optional by design (DEC-19,
+     UK Children's Code) — do not make it required.                */
+  var overlay = document.getElementById('overlay');
+  var lastFocus = null;
+
+  function openFb(){
+    lastFocus = document.activeElement;
+    overlay.classList.add('open');
+    document.getElementById('formBody').style.display = 'block';
+    var t = document.getElementById('thanks');
+    t.style.display = 'none';
+    t.querySelector('.big').textContent = 'Thank you.';
+    t.querySelector('p').textContent = "That's exactly the kind of note that makes this better.";
+    Array.prototype.forEach.call(document.querySelectorAll('#yn button, #pick button'), function(b){ b.classList.remove('sel'); });
+    document.getElementById('fbQuery').focus();
+  }
+  function closeFb(){
+    overlay.classList.remove('open');
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  document.getElementById('fab').addEventListener('click', openFb);
+  document.getElementById('cancel').addEventListener('click', closeFb);
+  document.getElementById('closeThanks').addEventListener('click', closeFb);
+  overlay.addEventListener('click', function(e){ if (e.target === overlay) closeFb(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && overlay.classList.contains('open')) closeFb(); });
+
+  ['#yn', '#pick'].forEach(function(sel){
+    Array.prototype.forEach.call(document.querySelectorAll(sel + ' button'), function(btn){
+      btn.addEventListener('click', function(){
+        Array.prototype.forEach.call(document.querySelectorAll(sel + ' button'), function(b){ b.classList.remove('sel'); });
+        btn.classList.add('sel');
+      });
+    });
+  });
+
+  var sendBtn = document.getElementById('send');
+  sendBtn.addEventListener('click', function(){
+    var sel = function(group){
+      var b = document.querySelector(group + ' button.sel');
+      return b ? b.dataset.v : '';
+    };
+    var payload = {
+      query:    document.getElementById('fbQuery').value.slice(0, 200),
+      helpful:  sel('#yn'),
+      best:     sel('#pick'),
+      note:     document.getElementById('fbNote').value.slice(0, 1000),
+      email:    document.getElementById('fbEmail').value.slice(0, 120),
+      device:   navigator.userAgent.slice(0, 300)
+    };
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending…';
+
+    fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(function(res){ return res.ok ? res.json() : Promise.reject(new Error('failed')); })
+    .then(function(){
+      document.getElementById('formBody').style.display = 'none';
+      document.getElementById('thanks').style.display = 'block';
+      document.getElementById('fbNote').value = '';
+      document.getElementById('fbEmail').value = '';
+    })
+    .catch(function(){
+      // Never claim it was received when it was not. RAID I-20.
+      var t = document.getElementById('thanks');
+      t.querySelector('.big').textContent = 'That did not send';
+      t.querySelector('p').textContent = 'Something went wrong at our end and your note was not saved. Sorry — please try again in a moment.';
+      document.getElementById('formBody').style.display = 'none';
+      t.style.display = 'block';
+    })
+    .finally(function(){
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Send feedback';
+    });
+  });
+})();
+</script>
+</body>
+</html>

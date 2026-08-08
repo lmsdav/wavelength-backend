@@ -637,6 +637,7 @@
   var q = document.getElementById('q');
   var go = document.getElementById('go');
   var statusEl = document.getElementById('status');
+  var statusText = statusEl.querySelector('span');
   var errorEl = document.getElementById('error');
   var region = document.getElementById('resultsRegion');
   var page   = document.querySelector('.page');
@@ -849,15 +850,21 @@
   }
 
   function setBusy(on, isMoodRefinement){
+    isMoodRefinement = isMoodRefinement || false;
     go.disabled = on;
     statusEl.classList.toggle('show', on);
     region.setAttribute('aria-busy', on ? 'true' : 'false');
-    if (on && isMoodRefinement) {
-      statusEl.textContent = 'Refining search... (analyzing moods, may take a moment)';
-      go.setAttribute('aria-label', 'Refining');
+    if (on) {
+      if (isMoodRefinement) {
+        statusText.textContent = 'Refining search... (analyzing moods, may take a moment)';
+        go.setAttribute('aria-label', 'Refining');
+      } else {
+        statusText.textContent = 'Searching...';
+        go.setAttribute('aria-label', 'Searching');
+      }
     } else {
-      statusEl.textContent = '';
-      go.setAttribute('aria-label', on ? 'Searching' : 'Trace the line');
+      statusText.textContent = 'Tracing the line…';
+      go.setAttribute('aria-label', 'Trace the line');
     }
   }
 

@@ -839,14 +839,11 @@
     q.value = '';
     syncClear();
     /* Scroll to show the anchor (starting point) card at top of viewport */
-    /* Use setTimeout to ensure DOM has fully updated before scrolling */
-    setTimeout(function(){
-      var anchor = document.querySelector('.anchor');
-      if (anchor) {
-        var anchorTop = anchor.getBoundingClientRect().top + window.scrollY;
-        window.scrollTo({top: Math.max(0, anchorTop - 20), behavior: 'smooth'});
-      }
-    }, 50);
+    var anchor = document.querySelector('.anchor');
+    if (anchor) {
+      var anchorTop = anchor.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({top: anchorTop - 20, behavior: 'smooth'});
+    }
   }
 
   function setBusy(on, isMoodRefinement){

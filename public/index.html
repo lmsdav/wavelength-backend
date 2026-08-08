@@ -292,7 +292,7 @@
   .again button{
     font-family:"Space Grotesk",sans-serif;font-size:14px;font-weight:500;
     color:var(--anchor);background:var(--card);border:1px solid rgba(67,56,202,.25);
-    border-radius:999px;padding:11px 20px;cursor:pointer;transition:background .18s;
+    border-radius:999px;padding:11px 20px;cursor:pointer;transition:background .18s;margin:8px 4px 0;
   }
   .again button:hover:not(:disabled){background:rgba(67,56,202,.06)}
   .again button:disabled{opacity:.5;cursor:not-allowed}
@@ -300,6 +300,11 @@
     font-size:.88rem;color:var(--muted);margin-top:9px;max-width:44ch;
     margin-inline:auto;line-height:1.5;
   }
+  .mood-options{display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+  .mood-options.show{display:block}
+  .mood-pair{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:12px 0}
+  .mood-pair button{font-size:13px;padding:9px 16px}
+  .mood-label{font-size:.85rem;color:var(--muted);margin-bottom:8px}
 
   /* ---- sponsor rail ---- */
   aside.rail{align-self:start;display:none}
@@ -625,6 +630,7 @@
   var spine = document.getElementById('spine');
   var chipWrap = document.getElementById('chips');
   var hero = document.querySelector('.hero');
+  var lastSearchTerm = '';  // Store original search for mood refinement
   var scrollHint = document.getElementById('scrollHint');
 
   var LABELS = {1:"Comfortable next step", 2:"A stretch", 3:"A reach"};
@@ -719,6 +725,40 @@
       btn.type = 'button';
       btn.addEventListener('click', function(){ search(); });
       again.appendChild(btn);
+
+      var moodBtn = el('button', null, 'Narrow by mood');
+      moodBtn.type = 'button';
+      again.appendChild(moodBtn);
+
+      var moodOpts = el('div', 'mood-options');
+      var moods = [
+        {q: 'melancholic', a: 'triumphant'},
+        {q: 'peaceful', a: 'intense'},
+        {q: 'dark', a: 'ethereal'}
+      ];
+      moods.forEach(function(m){
+        var label = el('div', 'mood-label', m.q + ' or ' + m.a + '?');
+        var pair = el('div', 'mood-pair');
+        [m.q, m.a].forEach(function(mood){
+          var b = el('button', null, mood.charAt(0).toUpperCase() + mood.slice(1));
+          b.type = 'button';
+          b.addEventListener('click', function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            q.value = lastSearchTerm + ' (' + mood + ' interpretation)';
+            moodOpts.classList.remove('show');
+            search();
+          });
+          pair.appendChild(b);
+        });
+        moodOpts.appendChild(label);
+        moodOpts.appendChild(pair);
+      });
+      again.appendChild(moodOpts);
+      moodBtn.addEventListener('click', function(){
+        moodOpts.classList.toggle('show');
+      });
+
       again.appendChild(el('div', 'why',
         'There is no single right answer. Search the same thing again and you will probably get a different route.'));
       spine.appendChild(again);
@@ -738,6 +778,10 @@
     document.getElementById('fbQuery').value = recognised ? (data.title || '') : q.value;
     region.classList.add('show');
     page.classList.add('with-results');
+    /* Clear search box after results appear, so next search is clean */
+    lastSearchTerm = q.value;  // Save before clearing for mood refinement
+    q.value = '';
+    syncClear();
     /* Scroll to show the anchor (starting point) card at top of viewport */
     var anchor = document.querySelector('.anchor');
     if (anchor) {

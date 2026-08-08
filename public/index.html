@@ -838,18 +838,27 @@
     q.value = '';
     syncClear();
     /* Scroll to show the anchor (starting point) card at top of viewport */
-    var anchor = document.querySelector('.anchor');
-    if (anchor) {
-      var anchorTop = anchor.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({top: anchorTop - 20, behavior: 'smooth'});
-    }
+    /* Use setTimeout to ensure DOM has fully updated before scrolling */
+    setTimeout(function(){
+      var anchor = document.querySelector('.anchor');
+      if (anchor) {
+        var anchorTop = anchor.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({top: Math.max(0, anchorTop - 20), behavior: 'smooth'});
+      }
+    }, 50);
   }
 
-  function setBusy(on){
+  function setBusy(on, isMoodRefinement){
     go.disabled = on;
     statusEl.classList.toggle('show', on);
     region.setAttribute('aria-busy', on ? 'true' : 'false');
-    go.setAttribute('aria-label', on ? 'Searching' : 'Trace the line');
+    if (on && isMoodRefinement) {
+      statusEl.textContent = 'Refining search... (analyzing moods, may take a moment)';
+      go.setAttribute('aria-label', 'Refining');
+    } else {
+      statusEl.textContent = '';
+      go.setAttribute('aria-label', on ? 'Searching' : 'Trace the line');
+    }
   }
 
   function showError(msg){
@@ -862,7 +871,10 @@
     if (!val) { q.focus(); return; }
     if (val.length > MAX_INPUT) val = val.slice(0, MAX_INPUT);
 
-    setBusy(true);
+    /* Detect mood refinement searches (they contain parentheses with moods) */
+    var isMoodRefinement = val.indexOf('(') > -1 && val.indexOf(')') > val.indexOf('(');
+
+    setBusy(true, isMoodRefinement);
     errorEl.classList.remove('show');
 
     fetch('/api/recommend', {

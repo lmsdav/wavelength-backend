@@ -254,22 +254,30 @@ function validateShape(obj) {
     r.step = step;
   }
 
-  // Validate mood_suggestions if present
+  // Validate mood_suggestions if present (gracefully optional)
   let moodSuggestions = [];
-  if (Array.isArray(obj.mood_suggestions)) {
-    if (obj.mood_suggestions.length !== 3) return { ok: false, why: "mood_suggestions must have exactly 3 dimensions" };
+  if (Array.isArray(obj.mood_suggestions) && obj.mood_suggestions.length > 0) {
+    // Attempt to extract valid mood suggestions, but don't fail if malformed
     for (const ms of obj.mood_suggestions) {
-      if (!ms || typeof ms !== "object") return { ok: false, why: "mood suggestion is not an object" };
-      if (typeof ms.dimension !== "string" || !ms.dimension.trim()) return { ok: false, why: "mood suggestion missing dimension" };
-      if (!Array.isArray(ms.moods)) return { ok: false, why: "mood suggestion moods is not an array" };
-      if (ms.moods.length < 2 || ms.moods.length > 3) return { ok: false, why: "mood suggestion must have 2-3 moods" };
+      if (!ms || typeof ms !== "object") continue;
+      if (typeof ms.dimension !== "string" || !ms.dimension.trim()) continue;
+      if (!Array.isArray(ms.moods) || ms.moods.length < 2 || ms.moods.length > 3) continue;
+
+      // Validate all mood labels are strings
+      let allValid = true;
       for (const mood of ms.moods) {
-        if (typeof mood !== "string" || !mood.trim()) return { ok: false, why: "mood label is not a string" };
+        if (typeof mood !== "string" || !mood.trim()) {
+          allValid = false;
+          break;
+        }
       }
-      moodSuggestions.push({
-        dimension: ms.dimension.trim(),
-        moods: ms.moods.map(m => m.trim())
-      });
+
+      if (allValid) {
+        moodSuggestions.push({
+          dimension: ms.dimension.trim(),
+          moods: ms.moods.map(m => m.trim())
+        });
+      }
     }
   }
 

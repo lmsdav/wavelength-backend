@@ -196,12 +196,16 @@
   .page{display:grid;grid-template-columns:1fr;column-gap:26px;row-gap:0;align-items:start}
   @media(min-width:900px){
     .page.with-results{grid-template-columns:minmax(0,1fr) 260px}
-    /* Hero sits in row 1, results in row 2, rail alongside ROW 2 — so the
-       sponsor cards start level with the "Your starting point" card rather
-       than level with the title. */
+    /* Hero sits in row 1, footnote in row 2 (spans both), results in row 3,
+       rail alongside ROW 3 — so sponsor cards align with anchor top. */
     .page.with-results .hero          {grid-column:1;grid-row:1}
-    .page.with-results .results-region{grid-column:1;grid-row:2}
-    .page.with-results aside.rail     {grid-column:2;grid-row:2}
+    .page.with-results .footnote      {grid-column:1/-1;grid-row:2}
+    .page.with-results .results-region{grid-column:1;grid-row:3}
+    .page.with-results aside.rail     {grid-column:2;grid-row:3}
+  }
+  /* On desktop, move footnote into grid flow */
+  @media(min-width:900px){
+    .footnote{margin:0 0 0 0}
   }
   .results-region{padding:0 0 40px;display:none}
   /* Clear space beneath everything so the floating Feedback button never
@@ -327,10 +331,9 @@
 
   /* ---- footer note ---- */
   .footnote{
-    border-top:none;margin:0;padding:0;
+    border-top:none;margin:0 0 16px 0;padding:0;
     text-align:center;color:var(--muted);font-size:.95rem;max-width:640px;margin-inline:auto;
   }
-  .footnote + .anchor{margin-top:16px}
   .footnote b.n{color:var(--near-text)} .footnote b.s{color:var(--stretch-text)} .footnote b.r{color:var(--reach-text)}
 
   /* ---- feedback button + modal ---- */
@@ -499,11 +502,11 @@
       <div class="scroll-hint" id="scrollHint" aria-hidden="true">↓</div>
     </section>
 
-    <section class="results-region" id="resultsRegion" aria-live="polite" aria-busy="false">
-      <div class="footnote">
-        Three steps out, every time: a <b class="n">comfortable next step</b>, a <b class="s">stretch</b>, and a <b class="r">reach</b> — each with the musical bridge explained.
-      </div>
+    <div class="footnote">
+      Three steps out, every time: a <b class="n">comfortable next step</b>, a <b class="s">stretch</b>, and a <b class="r">reach</b> — each with the musical bridge explained.
+    </div>
 
+    <section class="results-region" id="resultsRegion" aria-live="polite" aria-busy="false">
           <div class="anchor">
             <div class="tag">Your starting point</div>
             <h2 class="a-title" id="aTitle"></h2>

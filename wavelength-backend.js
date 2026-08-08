@@ -165,6 +165,10 @@ IF AND ONLY IF you are using the fallback, respond with this shape instead — n
 
 Each reason must name ONE specific musical connection — form, era, technique, emotional register, instrumentation, or direct influence — in ONE sentence of at most 25 words. Never vague "if you like this you'll like that". Brevity matters more than completeness.
 
+After generating the three recommendations, analyze what you recommended and suggest 3 mood dimensions that contextually fit those pieces. For each dimension, provide 2-3 specific mood labels. The dimensions should reflect real emotional or sonic contrasts in the pieces you recommended.
+
+Examples of mood dimensions: "Dark vs Ethereal", "Intimate vs Orchestral", "Melancholic vs Triumphant", "Minimalist vs Maximalist", "Energetic vs Contemplative". Mood labels should be single words: "Dark", "Intimate", "Melancholic", "Energetic", etc.
+
 Respond with ONLY valid JSON. No markdown fences, no preamble, exactly this shape:
 {
   "recognised": true,
@@ -174,6 +178,11 @@ Respond with ONLY valid JSON. No markdown fences, no preamble, exactly this shap
     { "title": "Composer — Work title", "composer": "Composer name", "step": 1, "reason": "One short sentence, may use <b></b> around the key phrase." },
     { "title": "Composer — Work title", "composer": "Composer name", "step": 2, "reason": "..." },
     { "title": "Composer — Work title", "composer": "Composer name", "step": 3, "reason": "..." }
+  ],
+  "mood_suggestions": [
+    { "dimension": "Dark vs Ethereal", "moods": ["Dark", "Ethereal"] },
+    { "dimension": "Intimate vs Orchestral", "moods": ["Intimate", "Orchestral"] },
+    { "dimension": "Melancholic vs Triumphant", "moods": ["Melancholic", "Triumphant"] }
   ]
 }`;
 
@@ -245,6 +254,25 @@ function validateShape(obj) {
     r.step = step;
   }
 
+  // Validate mood_suggestions if present
+  let moodSuggestions = [];
+  if (Array.isArray(obj.mood_suggestions)) {
+    if (obj.mood_suggestions.length !== 3) return { ok: false, why: "mood_suggestions must have exactly 3 dimensions" };
+    for (const ms of obj.mood_suggestions) {
+      if (!ms || typeof ms !== "object") return { ok: false, why: "mood suggestion is not an object" };
+      if (typeof ms.dimension !== "string" || !ms.dimension.trim()) return { ok: false, why: "mood suggestion missing dimension" };
+      if (!Array.isArray(ms.moods)) return { ok: false, why: "mood suggestion moods is not an array" };
+      if (ms.moods.length < 2 || ms.moods.length > 3) return { ok: false, why: "mood suggestion must have 2-3 moods" };
+      for (const mood of ms.moods) {
+        if (typeof mood !== "string" || !mood.trim()) return { ok: false, why: "mood label is not a string" };
+      }
+      moodSuggestions.push({
+        dimension: ms.dimension.trim(),
+        moods: ms.moods.map(m => m.trim())
+      });
+    }
+  }
+
   return {
     ok: true,
     value: {
@@ -259,6 +287,7 @@ function validateShape(obj) {
           reason: r.reason.trim(),
         }))
         .sort((a, b) => a.step - b.step),
+      mood_suggestions: moodSuggestions
     },
   };
 }

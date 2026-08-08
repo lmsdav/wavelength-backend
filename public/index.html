@@ -300,11 +300,24 @@
     font-size:.88rem;color:var(--muted);margin-top:9px;max-width:44ch;
     margin-inline:auto;line-height:1.5;
   }
-  .mood-options{display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+  .mood-options{display:none;margin-top:16px;padding:16px;border-top:1px solid var(--line)}
   .mood-options.show{display:block}
-  .mood-pair{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:12px 0}
-  .mood-pair button{font-size:13px;padding:9px 16px}
-  .mood-label{font-size:.85rem;color:var(--muted);margin-bottom:8px}
+  .mood-display{font-size:.85rem;color:var(--muted);margin-bottom:12px;min-height:1.4em}
+  .mood-dimension{margin-bottom:16px}
+  .mood-dimension-label{font-size:.85rem;color:var(--muted);margin-bottom:8px;font-weight:500}
+  .mood-checkboxes{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .mood-checkbox-wrapper{display:flex;align-items:center;gap:6px}
+  .mood-checkbox-wrapper input[type="checkbox"]{
+    width:18px;height:18px;cursor:pointer;accent-color:var(--anchor);
+  }
+  .mood-checkbox-wrapper label{cursor:pointer;font-size:.9rem}
+  .mood-options button{
+    font-family:"Space Grotesk",sans-serif;font-size:14px;font-weight:500;
+    color:var(--anchor);background:var(--card);border:1px solid rgba(67,56,202,.25);
+    border-radius:999px;padding:11px 20px;cursor:pointer;transition:background .18s;margin-top:8px;
+  }
+  .mood-options button:hover:not(:disabled){background:rgba(67,56,202,.06)}
+  .mood-options button:disabled{opacity:.5;cursor:not-allowed}
 
   /* ---- sponsor rail ---- */
   aside.rail{align-self:start;display:none}
@@ -726,34 +739,76 @@
       btn.addEventListener('click', function(){ search(); });
       again.appendChild(btn);
 
-      var moodBtn = el('button', null, 'Narrow by mood');
+      /* Mood refinement: dynamic checkboxes based on API suggestions */
+      var moodBtn = el('button', null, 'Refine by mood');
       moodBtn.type = 'button';
       again.appendChild(moodBtn);
 
       var moodOpts = el('div', 'mood-options');
-      var moods = [
-        {q: 'melancholic', a: 'triumphant'},
-        {q: 'peaceful', a: 'intense'},
-        {q: 'dark', a: 'ethereal'}
-      ];
-      moods.forEach(function(m){
-        var label = el('div', 'mood-label', m.q + ' or ' + m.a + '?');
-        var pair = el('div', 'mood-pair');
-        [m.q, m.a].forEach(function(mood){
-          var b = el('button', null, mood.charAt(0).toUpperCase() + mood.slice(1));
-          b.type = 'button';
-          b.addEventListener('click', function(e){
-            e.preventDefault();
-            e.stopPropagation();
-            q.value = lastSearchTerm + ' (' + mood + ' interpretation)';
-            moodOpts.classList.remove('show');
-            search();
+      var selectedMoods = []; // Track which moods are selected
+      var moodCheckboxes = {}; // Map mood -> checkbox element
+
+      /* Display selected moods above the options */
+      var moodDisplay = el('div', 'mood-display');
+      moodDisplay.textContent = 'None selected';
+      moodOpts.appendChild(moodDisplay);
+
+      /* Build checkboxes from API suggestions */
+      (data.mood_suggestions || []).forEach(function(suggestion){
+        var dimContainer = el('div', 'mood-dimension');
+
+        var dimLabel = el('div', 'mood-dimension-label', suggestion.dimension);
+        dimContainer.appendChild(dimLabel);
+
+        var checkboxContainer = el('div', 'mood-checkboxes');
+        (suggestion.moods || []).forEach(function(mood){
+          var checkboxWrapper = el('div', 'mood-checkbox-wrapper');
+          var checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.id = 'mood_' + mood.toLowerCase().replace(/\s+/g, '_');
+          checkbox.value = mood;
+          checkbox.addEventListener('change', function(){
+            if (checkbox.checked) {
+              if (selectedMoods.indexOf(mood) === -1) selectedMoods.push(mood);
+            } else {
+              selectedMoods = selectedMoods.filter(function(m){ return m !== mood; });
+            }
+            /* Update display */
+            moodDisplay.textContent = selectedMoods.length > 0
+              ? 'Refined for: ' + selectedMoods.join(', ')
+              : 'None selected';
+            /* Enable/disable refine button */
+            refineBtn.disabled = selectedMoods.length === 0;
           });
-          pair.appendChild(b);
+          moodCheckboxes[mood] = checkbox;
+
+          var label = document.createElement('label');
+          label.htmlFor = checkbox.id;
+          label.textContent = mood;
+
+          checkboxWrapper.appendChild(checkbox);
+          checkboxWrapper.appendChild(label);
+          checkboxContainer.appendChild(checkboxWrapper);
         });
-        moodOpts.appendChild(label);
-        moodOpts.appendChild(pair);
+        dimContainer.appendChild(checkboxContainer);
+        moodOpts.appendChild(dimContainer);
       });
+
+      /* Refine button: search with all selected moods */
+      var refineBtn = el('button', null, 'Search with selected moods');
+      refineBtn.type = 'button';
+      refineBtn.disabled = true;
+      refineBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if (selectedMoods.length > 0) {
+          q.value = lastSearchTerm + ' (' + selectedMoods.join(', ') + ')';
+          moodOpts.classList.remove('show');
+          search();
+        }
+      });
+      moodOpts.appendChild(refineBtn);
+
       again.appendChild(moodOpts);
       moodBtn.addEventListener('click', function(){
         moodOpts.classList.toggle('show');

@@ -134,6 +134,7 @@
     width:44px;height:44px;border:0;background:transparent;color:var(--clearx-text);
     font-size:19px;line-height:1;cursor:pointer;border-radius:50%;padding:0;
     display:none;align-items:center;justify-content:center;flex:none;
+    pointer-events:auto;z-index:10;
   }
   .search .clear:hover{background:rgba(20,22,28,.06);color:var(--ink)}
   .search .clear{font-size:20px}
@@ -818,8 +819,11 @@
   q.addEventListener('focus', function(){
     if (q.value && region.classList.contains('show')) q.select();
   });
-  clearBtn.addEventListener('click', function(){
+  clearBtn.addEventListener('click', function(e){
+    e.preventDefault();
+    e.stopPropagation();
     q.value = '';
+    q.focus();
     syncClear();
     errorEl.classList.remove('show');
     region.classList.remove('show');

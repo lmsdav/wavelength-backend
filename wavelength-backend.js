@@ -23,7 +23,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ---------------------------------------------------------------- config ----
 const CONFIG = {
-  model: "claude-haiku-4-5-20251001",   // DEC-04 — Haiku 4.5
+  model: "claude-sonnet-5",              // Upgraded from Haiku 4.5 for better recognition
   maxTokens: 1400,                       // raised from 1000: 1000 truncated JSON
   maxInputChars: 200,                    // RAID R-15
   rateLimit: { max: 30, windowMs: 60 * 60 * 1000 },  // DEC-27: 30 per IP per hour
